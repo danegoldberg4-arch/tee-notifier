@@ -1,0 +1,11 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+.env
+.DS_Store
+
+# Runtime state lives on the Railway volume (STATE_DIR=/data), not in git.
+# The in-repo copy was a stale orphan; the seed-run guard handles its absence.
+state.json

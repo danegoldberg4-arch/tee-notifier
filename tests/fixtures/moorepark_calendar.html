@@ -1,0 +1,1396 @@
+
+
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd"><html><!-- InstanceBegin template="/Templates/PrivateClub-Guests.dwt" codeOutsideHTMLIsLocked="false" -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<!-- InstanceBeginEditable name="doctitle" -->
+<title>Private Club : Members Section</title>
+<!-- InstanceEndEditable -->
+<link rel="shortcut icon" type="image/x-icon" href="/images/favicon.png"><script type="text/javascript" src="/scripts/miclub.js"></script>
+<link rel="stylesheet" href="https://use.typekit.net/xbc0bpm.css"/>
+<link href="/style/productStyle/privateClubProduct.css" rel="stylesheet" type="text/css" />
+<link type="text/css" media="screen" rel="stylesheet" href="/style/miclub.css" /><link type="text/css" media="screen" rel="stylesheet" href="/custom-styles/style.css" />
+<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.5/jquery.min.js"></script>
+<script type="text/javascript">
+function parseJsonpW(daysNo, icourl)
+{
+	$('#weatherFeedP').html('<h3>Loading...</h3>');
+	$.ajax({
+			url:'/spring/guest/weather/json',
+			url:'/spring/guest/weather/json',
+		type:'GET',
+		success:function(feed) {
+			var txtArray = [];
+			var shtcd = feed.data.weather.countries.country.location;
+			var lgnth = shtcd.forecasts.forecast.length;
+			for(var i=0; i < lgnth && i < daysNo; ++i)
+			{
+				var start = '<p class="weatherCt">';
+				var icon = '<img class="weatherIcon" width="50" height="50" border="0"' + 'alt="'+ shtcd.forecasts.forecast[i].icon.content + '"' + 'src="' + icourl + shtcd.forecasts.forecast[i].icon.filename + '">';
+				var tempRange = '<span class="weatherTempR">' + shtcd.forecasts.forecast[i].temp_min_c.content + ' - ' + shtcd.forecasts.forecast[i].temp_max_c.content + '&#176;C</span>';
+				var day = '<p class="weatherDay">' + shtcd.forecasts.forecast[i].day_name + '</p>';
+				var forecast = '<span class="weatherFore"></span>';
+				var end = '</p>';
+				txtArray.push(start,day,icon,tempRange,forecast,end);
+			}
+			$('#weatherFeedP').html(txtArray.join(''));
+		},
+		dataType: 'jsonp',
+		jsonp: false,
+		jsonpCallback: 'func'
+	});
+}
+
+$(document).ready(function() {
+	parseJsonpW(1, '/icons/courseConditions/weather/forecast/');
+});
+</script>
+</head>
+<body>
+    <div id="headWrap"><aside>
+    <nav>
+        <ul id="menu-top-menu-1" class="menu">
+            <li class="menu-item menu-item-type-post_type menu-item-object-page menu-item-318"><a href="https://www.mooreparkgolf.com.au/about-us/">About Us</a></li>
+            <li class="menu-item menu-item-type-post_type menu-item-object-page menu-item-255"><a href="https://www.mooreparkgolf.com.au/contact/">Contact Us</a></li>
+            <li class="menu-item menu-item-type-post_type menu-item-object-page menu-item-1544"><a href="https://www.mooreparkgolf.com.au/membership/">Membership</a></li>
+            <li class="members-button menu-item menu-item-type-custom menu-item-object-custom menu-item-719"><a href="https://moorepark.miclub.com.au/security/login.msp">Members Login</a></li>
+        </ul>
+    </nav>
+    <div id="tagline">
+        <div class="ticker">
+            <p>
+            </p>
+        </div>
+    </div>
+    <div id="controls">
+    </div>
+</aside><div id="mpheader"><div class="logo-container"><a href="https://www.mooreparkgolf.com.au/"><img src="/custom-styles/logo.png"/></a></div>
+    <div class="nav-main"><div class="nav-main">
+    <ul id="nav" class="guestsMenu">
+        <li><a href="https://www.mooreparkgolf.com.au/play/">Play</a></li>
+        <li><a href="https://www.mooreparkgolf.com.au/practice/">Practice</a></li>
+        <li><a href="https://www.mooreparkgolf.com.au/learn/" target=" _blank">Learn</a></li>
+        <li><a href="https://www.mooreparkgolf.com.au/entertain/">Entertain</a></li>
+    </ul>
+</div></div>
+    </div></div>
+    <div id="mainContent"><!-- InstanceBeginEditable name="Body" --> 
+	<div id="PubBookings">  
+
+
+
+
+<link rel="stylesheet" href="/style/productStyle/p4p.css"/>
+
+    <link rel="stylesheet" href="/style/customProduct.css" type="text/css"/>
+
+
+<link rel="stylesheet" href="/style/productStyle/bootstrap/bootstrap.min.css"/>
+<script src="/scripts/miclub-ajax-no-prototype.js"></script>
+<link rel="stylesheet" href="/style/productStyle/miclub-icon.css"/>
+<link rel="stylesheet" href="/scripts/jquery/ui/smoothness/jquery-ui.smoothness.1.14.1.css">
+<script src="/scripts/jquery/3.7.1/jquery-3.7.1.min.js" type="application/javascript"></script>
+<script type="application/javascript" src="/scripts/jquery/jquery-ui.1.14.1.min.js"></script>
+<script type="application/javascript" src="/scripts/date.js"></script>
+<script src="https://www.google.com/recaptcha/api.js?onload=enableRecaptcha&render=explicit" async defer></script>
+
+<style>
+    @media only screen and (max-width: 480px), screen and (max-device-width: 480px), screen and (max-width: 600px), screen and (device-aspect-ratio: 40 / 71) {
+        #ui-datepicker-div {
+            display: block !important;
+        }
+    }
+</style>
+
+<script type="application/javascript">
+    var publicCaptchaEnabled = false;
+
+    function onSubmit(token)
+    {
+        location.href='/guests/bookings/ViewPublicTimesheet.msp?bookingResourceId='+bookingResourceId+'&selectedDate='+redirectDate+'&feeGroupId='+feeGroupId + mobileParameter + "&recaptchaResponse=" + token;
+    }
+
+    function enableRecaptcha()
+    {
+        if (publicCaptchaEnabled)
+        {
+            grecaptcha.ready(function() {
+                grecaptcha.render("recaptcha-container", {
+                    "sitekey": "6LdW0oYhAAAAANGETUBbMVIxGY5Vk3zgHaK8kRJj"
+                });
+            });
+        }
+    }
+</script>
+
+<div class="page-content public-calendar">
+
+ <div class="row">
+     <div class="container-fluid teetime-search-filters">
+
+        
+
+            <div class="col-xs-12">
+                <h3 class="resourceName">Public Bookings</h3>
+
+            </div>
+
+
+        <form role="form" onsubmit="return false;">
+            <input type="hidden" name="mobile" value=""/>
+
+                <div class="col col-lg-8 col-md-8 col-sm-5 col-xs-12 filter-wrapper">
+                    <div class="col col-lg-5 col-md-5 col-sm-12 col-xs-12">
+                        <div class="form-group">
+                            <div class="input-group date">
+                                <input type="text" id="datepicker" data-date-format="DD/MM/YYYY"
+                                       placeholder="DD/MM/YYYY" value="26/05/2026"/>
+                                <span class="input-group-addon datepickerbutton" onclick="openDatePicker();">
+                                    <span class="glyphicon glyphicon-calendar"></span>
+                                </span>
+                                <span class="input-group-addon btn-today" title="Show today's fixtures" onclick="redirectBackToToday();">
+                                    <span class="glyphicon glyphicon-time"></span>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col col-lg-7 col-md-7 hidden-sm hidden-xs">
+                        <div class="form-group">
+                            <label class="checkbox-inline">
+                                <input type="checkbox" id="allFilter" name="noFilter" value="1"  checked="checked"
+                                   disabled="disabled"  />All
+                            </label>
+                            <label class="checkbox-inline">
+                                <input type="checkbox" name="nineHolesOnly" id="nineHolesOnly" class="filter"
+                                     />9 Holes
+                            </label>
+                            <label class="checkbox-inline">
+                                <input type="checkbox" name="weekendsOnly" id="weekendsOnly" class="filter"
+                                     />
+                                Weekends Only
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col col-lg-4 col-md-4 col-sm-7 col-xs-12 btn-wrapper">
+                    <div class="btn-user-wrapper">
+    <div class="btn-group btn-user">
+        
+            
+                <button type="button" id="btn-login" class="btn btn-default btn-primary" title="Login" onclick="linkToLoginModal();">
+                    <span class="glyphicon glyphicon-user"></span>
+                    <span class="btn-label">Login</span>
+                </button>
+            
+            
+        
+    </div>
+</div>
+
+<div class="btn-checkout-wrapper">
+    <div class="btn-group">
+        
+            
+            
+                <button type="button" class="btn btn-default" disabled="disabled"
+                        aria-expanded="false" title="There are currently no items in your cart">
+                    <span class="glyphicon glyphicon-shopping-cart"></span>
+                    <span class="btn-label">Checkout</span>
+                </button>
+            
+        
+    </div>
+</div>
+
+    <div class="registration-link"><button class="btn btn-default no-login" onclick="gotoRegistration();"> No Login? <strong>Sign Up</strong></button></div>
+
+
+<script type="application/javascript">
+
+    function gotoDestination(destination)
+    {
+        location.href = destination ;
+    }
+
+    function gotoRegistration()
+    {
+        
+
+        
+            var params = 'url='+document.URL;
+            sendCommonUpdate('setSessionRedirect', params, function() {document.location.href='/security/create.member.action.xsp';});
+        
+    }
+
+</script>
+
+                </div>
+
+
+
+
+     <div class="row" align="center">
+                
+
+            </div>
+
+        </form>
+     </div>
+
+    </div>
+
+    
+        <div class="warning-box">
+            <span class="glyphicon glyphicon-paperclip"></span>
+            <h1>ATTENTION:</h1><h2><strong><u>For all public players &amp; members</u></strong></h2><p><br></p><p>Please note that, "<strong><u>ALL ELECTRIC CARTS NEED TO BE BOOKED IN ADVANCE</u></strong>"</p><p>Requests to book electric carts on the day of play cannot be <strong><u>GUARANTEED.</u></strong></p><p><br></p><h3><strong><u>4th April</u></strong></h3><p>Due to the wet weather, all the Electric carts will be running under restricted cart path only.</p><p><br></p><p>Thanks</p>
+        </div>
+    
+
+
+
+    <div class="g-recaptcha"
+         id="recaptcha-container"
+         data-sitekey="6LdW0oYhAAAAANGETUBbMVIxGY5Vk3zgHaK8kRJj"
+         data-callback="onSubmit"
+         data-size="invisible">
+    </div>
+
+    <div class="main-content loaded">
+        <div class="container-fluid teetime-fixtures-table">
+            
+            
+                
+            
+                
+                    
+                
+            
+                
+                    
+                
+            
+                
+            
+                
+                    
+                
+            
+                
+                    
+                
+            
+
+            
+                
+                    <div class="row table-heading">
+                        <div class="col-lg-3 col-md-2 col-sm-4 col-xs-3 row-heading">
+                            <!-- NOTE: For future use i.e. when a club has multiple "courses" -->
+                            <!--<form class="form-inline form-course" role="form">-->
+                            <!--<div class="form-group">-->
+                            <!--<select id="slc-course" class="form-control chosen-select">-->
+                            <!--<option value="">All Courses</option>-->
+                            <!--</select>-->
+                            <!--</div>-->
+                            <!--</form>-->
+
+                            <a class="date-nav date-nav-prev" href="#" title="Previous week" onclick="javascript:changeDate(-1);">
+                                <span class="glyphicon glyphicon-chevron-left"></span>
+                                Prev
+                            </a>
+                        </div>
+
+                        <div class="cell-heading-wrapper">
+                            
+                                
+                                    
+                                        
+                                    
+                                    
+                                    
+                                    
+                                    
+                                
+                                
+                                    
+                                        <div class="col-lg-1 col-md-2 col-sm-2 col-xs-3 cell-heading cell-heading-today cell-heading-selected">
+                                            <h3>Today</h3>
+                                        </div>
+                                    
+                                    
+                                
+                            
+                                
+                                    
+                                        
+                                    
+                                    
+                                    
+                                    
+                                    
+                                
+                                
+                                    
+                                    
+                                        <div class="col-lg-1 col-md-2 col-sm-2 col-xs-3 cell-heading ">
+                                            <h3>Wed</h3>
+                                            <p>27 May</p>
+                                        </div>
+                                    
+                                
+                            
+                                
+                                    
+                                    
+                                        
+                                    
+                                    
+                                    
+                                    
+                                
+                                
+                                    
+                                    
+                                        <div class="col-lg-1 col-md-2 col-sm-2 col-xs-3 hidden-phone cell-heading ">
+                                            <h3>Thu</h3>
+                                            <p>28 May</p>
+                                        </div>
+                                    
+                                
+                            
+                                
+                                    
+                                    
+                                    
+                                        
+                                    
+                                    
+                                    
+                                
+                                
+                                    
+                                    
+                                        <div class="col-lg-1 col-md-2 col-sm-2 hidden-xs hidden-phone cell-heading ">
+                                            <h3>Fri</h3>
+                                            <p>29 May</p>
+                                        </div>
+                                    
+                                
+                            
+                                
+                                    
+                                    
+                                    
+                                    
+                                        
+                                    
+                                    
+                                
+                                
+                                    
+                                    
+                                        <div class="col-lg-1 col-md-2 hidden-sm hidden-xs hidden-phone cell-heading ">
+                                            <h3>Sat</h3>
+                                            <p>30 May</p>
+                                        </div>
+                                    
+                                
+                            
+                                
+                                    
+                                    
+                                    
+                                    
+                                    
+                                        
+                                    
+                                
+                                
+                                    
+                                    
+                                        <div class="col-lg-1 hidden-md hidden-sm hidden-xs hidden-phone cell-heading ">
+                                            <h3>Sun</h3>
+                                            <p>31 May</p>
+                                        </div>
+                                    
+                                
+                            
+                        </div>
+
+                        <a class="date-nav date-nav-next" href="#" title="Next week"  onclick="javascript:changeDate(1);">
+                            <span class="glyphicon glyphicon-chevron-right"></span>
+                            Next
+                        </a>
+                    </div>
+
+                    <div class="row-wrapper">
+                        
+                            
+                        
+                            
+                                <div class="row feeGroupRow feeGroupId-1501796650 eighteenHoles" data-feeid="1501796650">
+                                    <div class="col-lg-3 col-md-2 col-sm-4 col-xs-3 row-heading">
+                                        <h3>Twilight</h3>
+                                        
+                                    </div>
+                                    <div class="items-wrapper">
+                                        
+                                            
+                                            
+                                                
+                                                    
+                                                
+                                                
+                                                
+                                                
+                                                
+                                            
+
+
+
+                                            
+                                            
+                                                
+                                                
+                                                
+                                                    <div class="col-lg-1 col-md-2 col-sm-2 col-xs-3 cell" data-date="0" onclick="javascript:redirectToTimesheet('1501796650','2026-05-26');"
+                                                         data-feeid="1501796650" data-variationid="1518042090">
+                                                        
+                                                        
+                                                            <p class="price">$39.00</p>
+                                                        
+                                                    </div>
+                                                
+                                            
+                                        
+                                            
+                                            
+                                                
+                                                    
+                                                
+                                                
+                                                
+                                                
+                                                
+                                            
+
+
+
+                                            
+                                            
+                                                
+                                                
+                                                
+                                                    <div class="col-lg-1 col-md-2 col-sm-2 col-xs-3 cell" data-date="1" onclick="javascript:redirectToTimesheet('1501796650','2026-05-27');"
+                                                         data-feeid="1501796650" data-variationid="1518042090">
+                                                        
+                                                        
+                                                            <p class="price">$39.00</p>
+                                                        
+                                                    </div>
+                                                
+                                            
+                                        
+                                            
+                                            
+                                                
+                                                
+                                                    
+                                                
+                                                
+                                                
+                                                
+                                            
+
+
+
+                                            
+                                            
+                                                
+                                                
+                                                
+                                                    <div class="col-lg-1 col-md-2 col-sm-2 col-xs-3 hidden-phone cell" data-date="2" onclick="javascript:redirectToTimesheet('1501796650','2026-05-28');"
+                                                         data-feeid="1501796650" data-variationid="1518042090">
+                                                        
+                                                        
+                                                            <p class="price">$39.00</p>
+                                                        
+                                                    </div>
+                                                
+                                            
+                                        
+                                            
+                                            
+                                                
+                                                
+                                                
+                                                    
+                                                
+                                                
+                                                
+                                            
+
+
+
+                                            
+                                            
+                                                
+                                                
+                                                
+                                                    <div class="col-lg-1 col-md-2 col-sm-2 hidden-xs hidden-phone cell" data-date="3" onclick="javascript:redirectToTimesheet('1501796650','2026-05-29');"
+                                                         data-feeid="1501796650" data-variationid="1518042090">
+                                                        
+                                                        
+                                                            <p class="price">$39.00</p>
+                                                        
+                                                    </div>
+                                                
+                                            
+                                        
+                                            
+                                            
+                                                
+                                                
+                                                
+                                                
+                                                    
+                                                
+                                                
+                                            
+
+
+
+                                            
+                                            
+                                                
+                                                
+                                                
+                                                    <div class="col-lg-1 col-md-2 hidden-sm hidden-xs hidden-phone cell" data-date="4" onclick="javascript:redirectToTimesheet('1501796650','2026-05-30');"
+                                                         data-feeid="1501796650" data-variationid="1518042091">
+                                                        
+                                                        
+                                                            <p class="price">$46.00</p>
+                                                        
+                                                    </div>
+                                                
+                                            
+                                        
+                                            
+                                            
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                    
+                                                
+                                            
+
+
+
+                                            
+                                            
+                                                
+                                                
+                                                
+                                                    <div class="col-lg-1 hidden-md hidden-sm hidden-xs hidden-phone cell" data-date="5" onclick="javascript:redirectToTimesheet('1501796650','2026-05-31');"
+                                                         data-feeid="1501796650" data-variationid="1518042091">
+                                                        
+                                                        
+                                                            <p class="price">$46.00</p>
+                                                        
+                                                    </div>
+                                                
+                                            
+                                        
+                                    </div>
+                                </div>
+                            
+                        
+                            
+                                <div class="row feeGroupRow feeGroupId-1501385381 eighteenHoles" data-feeid="1501385381">
+                                    <div class="col-lg-3 col-md-2 col-sm-4 col-xs-3 row-heading">
+                                        <h3>18 Holes</h3>
+                                        
+                                    </div>
+                                    <div class="items-wrapper">
+                                        
+                                            
+                                            
+                                                
+                                                    
+                                                
+                                                
+                                                
+                                                
+                                                
+                                            
+
+
+
+                                            
+                                            
+                                                
+                                                    <div class="col-lg-1 col-md-2 col-sm-2 col-xs-3 cell cell-na" data-date="0">
+                                                        <p>Not Available</p>
+                                                    </div>
+                                                
+                                                
+                                                
+                                            
+                                        
+                                            
+                                            
+                                                
+                                                    
+                                                
+                                                
+                                                
+                                                
+                                                
+                                            
+
+
+
+                                            
+                                            
+                                                
+                                                
+                                                
+                                                    <div class="col-lg-1 col-md-2 col-sm-2 col-xs-3 cell" data-date="1" onclick="javascript:redirectToTimesheet('1501385381','2026-05-27');"
+                                                         data-feeid="1501385381" data-variationid="1518042031">
+                                                        
+                                                        
+                                                            <p class="price">$56.00</p>
+                                                        
+                                                    </div>
+                                                
+                                            
+                                        
+                                            
+                                            
+                                                
+                                                
+                                                    
+                                                
+                                                
+                                                
+                                                
+                                            
+
+
+
+                                            
+                                            
+                                                
+                                                
+                                                
+                                                    <div class="col-lg-1 col-md-2 col-sm-2 col-xs-3 hidden-phone cell" data-date="2" onclick="javascript:redirectToTimesheet('1501385381','2026-05-28');"
+                                                         data-feeid="1501385381" data-variationid="1518042031">
+                                                        
+                                                        
+                                                            <p class="price">$56.00</p>
+                                                        
+                                                    </div>
+                                                
+                                            
+                                        
+                                            
+                                            
+                                                
+                                                
+                                                
+                                                    
+                                                
+                                                
+                                                
+                                            
+
+
+
+                                            
+                                            
+                                                
+                                                
+                                                
+                                                    <div class="col-lg-1 col-md-2 col-sm-2 hidden-xs hidden-phone cell" data-date="3" onclick="javascript:redirectToTimesheet('1501385381','2026-05-29');"
+                                                         data-feeid="1501385381" data-variationid="1518042135">
+                                                        
+                                                        
+                                                            <p class="price">$56.00</p>
+                                                        
+                                                    </div>
+                                                
+                                            
+                                        
+                                            
+                                            
+                                                
+                                                
+                                                
+                                                
+                                                    
+                                                
+                                                
+                                            
+
+
+
+                                            
+                                            
+                                                
+                                                
+                                                
+                                                    <div class="col-lg-1 col-md-2 hidden-sm hidden-xs hidden-phone cell" data-date="4" onclick="javascript:redirectToTimesheet('1501385381','2026-05-30');"
+                                                         data-feeid="1501385381" data-variationid="1517838988">
+                                                        
+                                                        
+                                                            <p class="price">$69.00</p>
+                                                        
+                                                    </div>
+                                                
+                                            
+                                        
+                                            
+                                            
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                    
+                                                
+                                            
+
+
+
+                                            
+                                            
+                                                
+                                                
+                                                
+                                                    <div class="col-lg-1 hidden-md hidden-sm hidden-xs hidden-phone cell" data-date="5" onclick="javascript:redirectToTimesheet('1501385381','2026-05-31');"
+                                                         data-feeid="1501385381" data-variationid="1517838988">
+                                                        
+                                                        
+                                                            <p class="price">$69.00</p>
+                                                        
+                                                    </div>
+                                                
+                                            
+                                        
+                                    </div>
+                                </div>
+                            
+                        
+                            
+                        
+                            
+                                <div class="row feeGroupRow feeGroupId-1501386657 eighteenHoles" data-feeid="1501386657">
+                                    <div class="col-lg-3 col-md-2 col-sm-4 col-xs-3 row-heading">
+                                        <h3>Front 10 Holes</h3>
+                                        
+                                    </div>
+                                    <div class="items-wrapper">
+                                        
+                                            
+                                            
+                                                
+                                                    
+                                                
+                                                
+                                                
+                                                
+                                                
+                                            
+
+
+
+                                            
+                                            
+                                                
+                                                    <div class="col-lg-1 col-md-2 col-sm-2 col-xs-3 cell cell-na" data-date="0">
+                                                        <p>Not Available</p>
+                                                    </div>
+                                                
+                                                
+                                                
+                                            
+                                        
+                                            
+                                            
+                                                
+                                                    
+                                                
+                                                
+                                                
+                                                
+                                                
+                                            
+
+
+
+                                            
+                                            
+                                                
+                                                
+                                                
+                                                    <div class="col-lg-1 col-md-2 col-sm-2 col-xs-3 cell" data-date="1" onclick="javascript:redirectToTimesheet('1501386657','2026-05-27');"
+                                                         data-feeid="1501386657" data-variationid="1518041995">
+                                                        
+                                                        
+                                                            <p class="price">$39.00</p>
+                                                        
+                                                    </div>
+                                                
+                                            
+                                        
+                                            
+                                            
+                                                
+                                                
+                                                    
+                                                
+                                                
+                                                
+                                                
+                                            
+
+
+
+                                            
+                                            
+                                                
+                                                
+                                                
+                                                    <div class="col-lg-1 col-md-2 col-sm-2 col-xs-3 hidden-phone cell" data-date="2" onclick="javascript:redirectToTimesheet('1501386657','2026-05-28');"
+                                                         data-feeid="1501386657" data-variationid="1518041995">
+                                                        
+                                                        
+                                                            <p class="price">$39.00</p>
+                                                        
+                                                    </div>
+                                                
+                                            
+                                        
+                                            
+                                            
+                                                
+                                                
+                                                
+                                                    
+                                                
+                                                
+                                                
+                                            
+
+
+
+                                            
+                                            
+                                                
+                                                    <div class="col-lg-1 col-md-2 col-sm-2 hidden-xs hidden-phone cell cell-na" data-date="3">
+                                                        <p>Not Available</p>
+                                                    </div>
+                                                
+                                                
+                                                
+                                            
+                                        
+                                            
+                                            
+                                                
+                                                
+                                                
+                                                
+                                                    
+                                                
+                                                
+                                            
+
+
+
+                                            
+                                            
+                                                
+                                                    <div class="col-lg-1 col-md-2 hidden-sm hidden-xs hidden-phone cell cell-na" data-date="4">
+                                                        <p>Not Available</p>
+                                                    </div>
+                                                
+                                                
+                                                
+                                            
+                                        
+                                            
+                                            
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                    
+                                                
+                                            
+
+
+
+                                            
+                                            
+                                                
+                                                    <div class="col-lg-1 hidden-md hidden-sm hidden-xs hidden-phone cell cell-na" data-date="5">
+                                                        <p>Not Available</p>
+                                                    </div>
+                                                
+                                                
+                                                
+                                            
+                                        
+                                    </div>
+                                </div>
+                            
+                        
+                            
+                                <div class="row feeGroupRow feeGroupId-1501386580 nineHole" data-feeid="1501386580">
+                                    <div class="col-lg-3 col-md-2 col-sm-4 col-xs-3 row-heading">
+                                        <h3>Back 8 Holes</h3>
+                                        
+                                    </div>
+                                    <div class="items-wrapper">
+                                        
+                                            
+                                            
+                                                
+                                                    
+                                                
+                                                
+                                                
+                                                
+                                                
+                                            
+
+
+
+                                            
+                                            
+                                                
+                                                    <div class="col-lg-1 col-md-2 col-sm-2 col-xs-3 cell cell-na" data-date="0">
+                                                        <p>Not Available</p>
+                                                    </div>
+                                                
+                                                
+                                                
+                                            
+                                        
+                                            
+                                            
+                                                
+                                                    
+                                                
+                                                
+                                                
+                                                
+                                                
+                                            
+
+
+
+                                            
+                                            
+                                                
+                                                
+                                                
+                                                    <div class="col-lg-1 col-md-2 col-sm-2 col-xs-3 cell" data-date="1" onclick="javascript:redirectToTimesheet('1501386580','2026-05-27');"
+                                                         data-feeid="1501386580" data-variationid="1518041998">
+                                                        
+                                                        
+                                                            <p class="price">$32.00</p>
+                                                        
+                                                    </div>
+                                                
+                                            
+                                        
+                                            
+                                            
+                                                
+                                                
+                                                    
+                                                
+                                                
+                                                
+                                                
+                                            
+
+
+
+                                            
+                                            
+                                                
+                                                
+                                                
+                                                    <div class="col-lg-1 col-md-2 col-sm-2 col-xs-3 hidden-phone cell" data-date="2" onclick="javascript:redirectToTimesheet('1501386580','2026-05-28');"
+                                                         data-feeid="1501386580" data-variationid="1518041998">
+                                                        
+                                                        
+                                                            <p class="price">$32.00</p>
+                                                        
+                                                    </div>
+                                                
+                                            
+                                        
+                                            
+                                            
+                                                
+                                                
+                                                
+                                                    
+                                                
+                                                
+                                                
+                                            
+
+
+
+                                            
+                                            
+                                                
+                                                    <div class="col-lg-1 col-md-2 col-sm-2 hidden-xs hidden-phone cell cell-na" data-date="3">
+                                                        <p>Not Available</p>
+                                                    </div>
+                                                
+                                                
+                                                
+                                            
+                                        
+                                            
+                                            
+                                                
+                                                
+                                                
+                                                
+                                                    
+                                                
+                                                
+                                            
+
+
+
+                                            
+                                            
+                                                
+                                                
+                                                
+                                                    <div class="col-lg-1 col-md-2 hidden-sm hidden-xs hidden-phone cell" data-date="4" onclick="javascript:redirectToTimesheet('1501386580','2026-05-30');"
+                                                         data-feeid="1501386580" data-variationid="1518041889">
+                                                        
+                                                        
+                                                            <p class="price">$39.00</p>
+                                                        
+                                                    </div>
+                                                
+                                            
+                                        
+                                            
+                                            
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                    
+                                                
+                                            
+
+
+
+                                            
+                                            
+                                                
+                                                
+                                                
+                                                    <div class="col-lg-1 hidden-md hidden-sm hidden-xs hidden-phone cell" data-date="5" onclick="javascript:redirectToTimesheet('1501386580','2026-05-31');"
+                                                         data-feeid="1501386580" data-variationid="1518041889">
+                                                        
+                                                        
+                                                            <p class="price">$39.00</p>
+                                                        
+                                                    </div>
+                                                
+                                            
+                                        
+                                    </div>
+                                </div>
+                            
+                        
+                    </div>
+                
+                
+            
+        </div>
+
+    </div>
+<script type="application/javascript">
+    var redirectDate;
+    var feeGroupId;
+    var selectedDate = '2026-05-26';
+    var bookingResourceId = '3050007';
+    var baseUrl = '/guests/bookings/ViewPublicCalendar.msp?bookingResourceId='+bookingResourceId+'&selectedDate='+selectedDate;
+
+    var mobileParameter = "";
+
+    
+
+    function redirectBackToAll()
+    {
+        location.href = baseUrl + mobileParameter + "&weekends=false";
+    }
+
+    function redirectBackToToday()
+    {
+        var date = new Date();
+        var month = date.getMonth()+1;
+        if(month < 10) {
+            month = '0'+month;
+        }
+        selectedDate = date.getFullYear()+"-"+month+"-"+date.getDate();
+        baseUrl='/guests/bookings/ViewPublicCalendar.msp?bookingResourceId=3050007&selectedDate='+selectedDate + mobileParameter;
+        filterChanged(true);
+    }
+    function filterChanged(useWEChecked)
+    {
+        var params= '';
+        if($('#nineHolesOnly').prop('checked')) {
+            params += '&nineHole=true';
+        }
+        if($('#weekendsOnly').prop('checked') && !useWEChecked) {
+            params += '&weekends=true';
+        } else {
+            params += '&weekends=false';
+        }
+
+        location.href = baseUrl + mobileParameter + params ;
+    }
+
+    function openDatePicker()
+    {
+        $('#datepicker').focus();
+    }
+
+    function changeDate(days)
+    {
+        var today = Date.today();
+        var date = Date.parse(selectedDate);
+        date.add(days*dayCount).days();
+        if(today.getTime() > date.getTime()) {
+            date = today;
+        }
+        var month = date.getMonth()+1;
+        if(month < 10) {
+            month = '0'+month;
+        }
+        selectedDate = date.getFullYear()+"-"+month+"-"+date.getDate();
+        baseUrl = '/guests/bookings/ViewPublicCalendar.msp?bookingResourceId='+bookingResourceId+'&selectedDate='+selectedDate + mobileParameter;
+        filterChanged(false);
+    }
+
+    $(function() {
+        var dateToday = new Date();
+        $( "#datepicker" ).datepicker({
+            dateFormat: 'dd/mm/yy',
+            minDate: dateToday,
+            onSelect: function() {
+                var value = $('#datepicker').val();
+                var parts = value.split('/');
+                selectedDate = parts[2]+"-"+parts[1]+"-"+parts[0];
+                baseUrl = '/guests/bookings/ViewPublicCalendar.msp?bookingResourceId='+bookingResourceId+'&selectedDate='+selectedDate + mobileParameter;
+                filterChanged(true);
+            }
+        });
+        $('[data-toggle="popover"]').popover({
+            html: true,
+            placement : 'right'
+            });
+    });
+
+
+    function redirectToTimesheet(feeGroupIdIn, day)
+    {
+        if (publicCaptchaEnabled)
+        {
+            redirectDate = day;
+            feeGroupId = feeGroupIdIn;
+            grecaptcha.execute();
+        }
+        else
+        {
+            location.href='/guests/bookings/ViewPublicTimesheet.msp?bookingResourceId='+bookingResourceId+'&selectedDate='+day+'&feeGroupId='+feeGroupIdIn + mobileParameter;
+        }
+    }
+    var dayCount = 6;
+    $(window).on("resize", function() {
+        initialiseDayCount();
+    });
+
+    function initialiseDayCount() {
+        var width = $(this).width();
+        dayCount = 6;
+        if(width < 481) {
+            dayCount = 2;
+        }
+        else if(width < 768) {
+            dayCount = 3;
+        }
+        else if(width < 992) {
+            dayCount = 4;
+        }
+        else if (width < 1200) {
+            dayCount = 5;
+        }
+        nineHoleTriggered();
+    }
+
+    function nineHoleTriggered()
+    {
+        $('.feeGroupRow').removeClass('hide');
+        if($('#nineHolesOnly').prop('checked')) {
+            $('.eighteenHoles').addClass('hide');
+        }
+
+        if(!$('#nineHolesOnly').prop('checked') && !$('#weekendsOnly').prop('checked')) {
+            $('#allFilter').prop('checked', true);
+            $('#allFilter').prop('disabled', true);
+        } else {
+            $('#allFilter').prop('checked', false);
+            $('#allFilter').prop('disabled', false);
+        }
+    }
+
+    $(document).ready(function(){
+        initialiseDayCount();
+        $('#nineHolesOnly').on('click', function(){
+            nineHoleTriggered();
+        });
+
+        $('#weekendsOnly').on('click', function(){
+            filterChanged(false);
+        });
+
+        $('#allFilter').on('click', function() {
+            redirectBackToAll();
+        });
+    });
+</script>
+    <script type="application/javascript" src="/scripts/bootstrap.min.js"></script>
+<a id="loginLink" data-toggle="modal" style="display:none!important" href="#" data-target="#loginModal" data-show="true"></a>
+<div class="modal fade" id="loginModal" tabindex="1" role="dialog" aria-hidden="true" style="width:auto;">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header"></div>
+      <div class="modal-body"></div>
+      <div class="modal-footer"></div>
+    </div>
+  </div>
+</div>
+<script type="application/javascript">
+
+  function linkToLoginModal()
+  {
+    var url = '/security/login-modal.msp';
+    var link = document.getElementById('loginLink');
+    link.setAttribute('href', url);
+
+    // load the url and show modal on success
+
+    $("#loginModal .modal-dialog").load(url, function() {
+      $("#loginModal").modal("show");
+    });
+  }
+  function logout()
+  {
+    var logoutUrl = '/spring/logout';
+    $.get(logoutUrl)
+            .done(function() {
+              location.reload();
+            })
+            .fail(function(error) {
+              var errorStatus = error.status;
+              alert('ERROR ' + errorStatus + ': Logout failed');
+            });
+  }
+</script>
+
+    
+
+</div><!-- /#page-content -->
+
+</div>
+	<!-- InstanceEndEditable --></div>
+<footer>
+    <!-- 100% width -->
+    <section>
+        <!-- default - content width -->
+        <article class="col-1-4">
+            <a href="https://www.mooreparkgolf.com.au/" class="custom-logo-link" rel="home" itemprop="url"><img width="327"
+                    height="111" src="https://www.mooreparkgolf.com.au/wp-content/uploads/2018/02/logo.png" class="custom-logo"
+                    alt="Moore Park Golf" itemprop="logo" srcset="https://www.mooreparkgolf.com.au/wp-content/uploads/2018/02/logo.png 327w, https://www.mooreparkgolf.com.au/wp-content/uploads/2018/02/logo-300x102.png 300w"
+                    sizes="(max-width: 327px) 100vw, 327px" /></a> </article>
+        <article class="col-1-4">
+            <ul id="menu-footer-menu" class="columns menu">
+                <li id="menu-item-228" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-228"><a
+                        href="https://www.mooreparkgolf.com.au/play/">Play</a></li>
+                <li id="menu-item-310" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-310"><a
+                        href="https://www.mooreparkgolf.com.au/practice/">Practice</a></li>
+                <li id="menu-item-309" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-309"><a
+                        href="https://www.mooreparkgolf.com.au/learn/">Learn</a></li>
+                <li id="menu-item-230" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-230"><a
+                        href="https://www.mooreparkgolf.com.au/entertain/">Entertain</a></li>
+                <li id="menu-item-313" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-313"><a
+                        href="https://www.mooreparkgolf.com.au/membership/">Membership</a></li>
+                <li id="menu-item-312" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-312"><a
+                        href="https://www.mooreparkgolf.com.au/about-us/">About Us</a></li>
+                <li id="menu-item-227" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-227"><a
+                        href="https://www.mooreparkgolf.com.au/contact/">Contact</a></li>
+            </ul>
+        </article>
+        <article class="col-1-4">
+        </article>
+        <article class="col-1-4">
+            <section id="text-2" class="widget widget_text">
+                <div class="textwidget">
+                    <p><a href="https://manager.gallusgolf.com/DownloadApp/305/Moore-Park-Golf" target="_blank" rel="noopener"><img
+                                class="aligncenter wp-image-216 size-full" src="https://www.mooreparkgolf.com.au/wp-content/uploads/2018/03/app-download.png"
+                                alt="" width="294" height="108" /></a></p>
+                </div>
+            </section>
+        </article>
+    </section>
+    <aside>
+        <!-- default - content width -->
+        <section>
+            <nav class="menu-appendix-container">
+                <ul id="menu-appendix" class="menu">
+                    <li id="menu-item-308" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-308"><a
+                            href="https://www.mooreparkgolf.com.au/accessibility/">Accessibility</a></li>
+                    <li id="menu-item-307" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-307"><a
+                            href="https://www.mooreparkgolf.com.au/disclaimer/">Disclaimer</a></li>
+                    <li id="menu-item-306" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-306"><a
+                            href="https://www.mooreparkgolf.com.au/feedback/">Feedback</a></li>
+                    <li id="menu-item-305" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-305"><a
+                            href="https://www.mooreparkgolf.com.au/privacy/">Privacy</a></li>
+                </ul>
+            </nav>
+            <div id="disclaimer">
+                <p>&copy; 2018 Moore Park Golf. All Rights Reserved.</p>
+                <p><a href="https://orioncreative.com.au">Website design</a> by Orion Creative</p>
+                <p><a href="https://www.google.com.au/maps/place/Moore+Park+Golf,+Cleveland+St,+Moore+Park+NSW+2021"
+                        target="_blank">Cnr Anzac Pde &amp; Cleveland St, Moore Park Sydney NSW</a></p>
+                <p><a href="tel:+61296631064">Phone: (+61 2) 9663 1064</a></p>
+                <p><a href="mailto:info@mpgolf.com.au">info@mpgolf.com.au</a></p>
+            </div>
+        </section>
+    </aside>
+</footer>
+</body>
+<!-- InstanceEnd --></html>
+

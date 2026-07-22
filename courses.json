@@ -1,0 +1,71 @@
+[
+  {
+    "key": "eastlake",
+    "name": "Eastlake Golf Club",
+    "base_url": "https://www.eastlakegolfclub.com.au",
+    "booking_resource_id": 3000000
+  },
+  {
+    "key": "moorepark",
+    "name": "Moore Park Golf",
+    "base_url": "https://moorepark.miclub.com.au",
+    "booking_resource_id": 3050007,
+    "fee_group_contains": "18"
+  },
+  {
+    "key": "brightonlakes",
+    "name": "Brighton Lakes Golf",
+    "base_url": "https://brightonlakes.miclub.com.au",
+    "booking_resource_id": 3000000,
+    "fee_group_contains": "18"
+  },
+  {
+    "key": "wakehurst",
+    "name": "Wakehurst Golf",
+    "base_url": "https://www.wakehurstgolf.com.au",
+    "booking_resource_id": 3000000,
+    "fee_group_contains": "18"
+  },
+  {
+    "key": "beverleypark",
+    "name": "Beverley Park Golf Club",
+    "base_url": "https://beverleypark.miclub.com.au",
+    "booking_resource_id": 3000000,
+    "fee_group_contains": "18"
+  },
+  {
+    "key": "masseypark",
+    "name": "Massey Park Golf Club",
+    "base_url": "https://masseypark.miclub.com.au",
+    "booking_resource_id": 3000000,
+    "fee_group_contains": "18"
+  },
+  {
+    "key": "northryde",
+    "name": "North Ryde Golf Club",
+    "base_url": "https://northryde.miclub.com.au",
+    "booking_resource_id": 3000000,
+    "fee_group_contains": "18"
+  },
+  {
+    "key": "gordon",
+    "name": "Gordon Golf Course",
+    "base_url": "https://www.gordongolfcourse.com.au",
+    "booking_resource_id": 187,
+    "fee_group_contains": "18"
+  },
+  {
+    "key": "coast",
+    "name": "The Coast Golf Club",
+    "base_url": "https://www.coastgolf.com.au",
+    "booking_resource_id": 3000000,
+    "fee_group_contains": "18"
+  },
+  {
+    "key": "bankstown",
+    "name": "Bankstown Golf Club",
+    "base_url": "https://www.bankstowngolf.com.au",
+    "booking_resource_id": 3000000,
+    "fee_group_contains": "18"
+  }
+]
