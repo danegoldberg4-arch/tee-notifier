@@ -1,9 +1,17 @@
 """Tee Notifier — scrapes golf course tee sheets and pings Discord."""
 from __future__ import annotations
 
+import argparse
+import json
+import os
 import re
-from datetime import datetime
+import sys
+import time
+from datetime import date as _date
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Iterable
+from zoneinfo import ZoneInfo
 
 import requests
 
@@ -105,7 +113,8 @@ def _parse_clock(hhmm: str) -> int:
 
 def _slot_time_to_minutes(slot_time: str) -> int:
     """Convert rendered '02:30 pm' to minutes-since-midnight."""
-    return _parse_clock(datetime.strptime(slot_time.strip().lower(), "%I:%M %p").strftime("%H:%M"))
+    dt = datetime.strptime(slot_time.strip().lower(), "%I:%M %p")
+    return dt.hour * 60 + dt.minute
 
 
 def find_new_matches(
@@ -147,6 +156,7 @@ def find_new_matches(
                 "fee_group_id": fee_group_id,
                 "fee_group_label": slot["fee_group_label"],
                 "free": slot["free"],
+                "total": slot.get("total", slot["free"]),
                 "watch_label": watch.get("label", ""),
                 "min_spots": min_spots,
             })
@@ -190,10 +200,6 @@ def timesheet_url(course: dict, target_date: str, fee_group_id: str) -> str:
         f"&feeGroupId={fee_group_id}"
     )
 
-
-from datetime import date as _date
-
-
 _MONTH_NAMES = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun",
                 "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 _DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
@@ -209,7 +215,7 @@ def build_discord_payload(match: dict) -> dict:
     pretty_date = _format_date_for_humans(match["date"])
     content = (
         f"@here 🏌️ **{match['course_name']}** — {pretty_date}, {match['time']}\n"
-        f"{match['free']} of 4 spots open · _{match['fee_group_label']}_\n"
+        f"{match['free']} of {match.get('total', 4)} spots open · _{match['fee_group_label']}_\n"
         f"Matches **\"{match['watch_label']}\"** (need ≥{match['min_spots']})\n"
         f"<{match['booking_url']}>"
     )
@@ -225,7 +231,6 @@ def post_alert(webhook_url: str, match: dict, max_retries: int = 5) -> str | Non
     Handles Discord's HTTP 429 rate limit by sleeping for the Retry-After period
     and retrying. Raises on other HTTP errors and after exhausting retries.
     """
-    import time
     payload = build_discord_payload(match)
     url = webhook_url + ("&" if "?" in webhook_url else "?") + "wait=true"
     for attempt in range(max_retries):
@@ -283,7 +288,7 @@ def build_count_update_content(match: dict, prev_free: int) -> str:
     arrow = "📉" if free < prev_free else "📈"
     return (
         f"🏌️ **{match['course_name']}** — {pretty_date}, {match['time']}\n"
-        f"{arrow} now {free} of 4 spots · _{match['fee_group_label']}_ (was {prev_free})\n"
+        f"{arrow} now {free} of {match.get('total', 4)} spots · _{match['fee_group_label']}_ (was {prev_free})\n"
         f"Matches **\"{match['watch_label']}\"** (need ≥{match['min_spots']})\n"
         f"<{match['booking_url']}>"
     )
@@ -317,14 +322,6 @@ def edit_message_to_strikethrough(webhook_url: str, message_id: str, original_co
     """
     edit_message(webhook_url, message_id, strikethrough_content(original_content))
 
-
-import argparse
-import json
-import os
-import sys
-from datetime import datetime, timedelta, timezone
-from pathlib import Path
-from zoneinfo import ZoneInfo
 
 # Tee sheets and watchlist dates are expressed in Sydney local time. The cron
 # runs in UTC, so 'today' must be derived in Sydney time or it slips a day during
@@ -405,7 +402,11 @@ def _state_keys_for_date(course_key: str, date: str, parsed_slots: dict, fee_gro
     out = {}
     for time_str, counts in parsed_slots.items():
         key = f"{course_key}|{date}|{time_str}|{fee_group_id}"
-        out[key] = {"free": counts["free"], "fee_group_label": fee_group_label}
+        out[key] = {
+            "free": counts["free"],
+            "total": counts["free"] + counts["taken"],
+            "fee_group_label": fee_group_label,
+        }
     return out
 
 
@@ -437,7 +438,6 @@ def main(argv: list[str] | None = None) -> int:
                         help="Skip Discord posts and state writes; just log what would happen.")
     args = parser.parse_args(argv)
 
-    import os
     webhook_url = args.webhook or os.environ.get("DISCORD_WEBHOOK_URL", "")
 
     courses = _load_json(COURSES_PATH) or []
@@ -560,7 +560,6 @@ def main(argv: list[str] | None = None) -> int:
             print(f"DRY-RUN COUNT-UPDATE: {k} ({pf} -> {current_slots[k]['free']})")
         return 0
 
-    import time
     EDIT_PACING_SECONDS = 1.2  # Discord webhook channels allow ~30 msg/min
 
     def _persist_state() -> None:
@@ -630,6 +629,18 @@ def main(argv: list[str] | None = None) -> int:
             # to reflect count changes or strike it through.
             posted_messages[slot_key] = {"message_id": str(message_id), "match": m}
             _persist_state()  # checkpoint each successful post
+        else:
+            # post_alert returned no message id (gave up after 429 retries, or
+            # Discord responded without an id). Drop the slot so the NEXT run
+            # sees it as a fresh transition and re-attempts, rather than letting
+            # it be swallowed by the prior_free >= min_spots de-dupe guard.
+            print(
+                f"WARN: alert for {m['course']} {m['date']} {m['time']} not confirmed; "
+                "will retry next run",
+                file=sys.stderr,
+            )
+            current_slots.pop(slot_key, None)
+            _persist_state()
         # Proactive pacing — Discord webhook channels allow ~30 msg/min.
         if idx + 1 < len(matches):
             time.sleep(EDIT_PACING_SECONDS)

@@ -82,6 +82,23 @@ def test_second_run_alerts_on_newly_opened_slot(repo_tree):
     assert any(m["time"] == "02:30 pm" for m in posted_matches)
 
 
+def test_unconfirmed_alert_is_retried_next_run(repo_tree):
+    """post_alert returning None (429 exhaustion / missing id) must not silently
+    swallow the alert: the slot is dropped from state so the next run re-fires it."""
+    (repo_tree / "state.json").write_text("{}")
+    with patch("watcher.fetch_calendar", side_effect=_fake_calendar), \
+         patch("watcher.fetch_timesheet", side_effect=_fake_timesheet), \
+         patch("watcher.post_alert", return_value=None) as mock_post:
+        exit_code = watcher.main(["--webhook", "https://discord/fake"])
+    assert exit_code == 0
+    assert mock_post.call_count >= 1
+    # The unconfirmed slot must be absent from persisted state so the de-dupe
+    # guard (prior_free >= min_spots) doesn't skip it on the next run.
+    state = json.loads((repo_tree / "state.json").read_text())
+    assert "eastlake|2026-05-30|02:30 pm|3784606" not in state.get("slots", {})
+    assert state.get("posted_messages", {}) == {}
+
+
 def test_booked_slot_strikes_previously_posted_message(repo_tree):
     """Slot was alerted on a previous run; now it's below min_spots -> strike + drop."""
     prior = {
