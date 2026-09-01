@@ -1,10 +1,10 @@
 from watcher import find_new_matches
 
 
-def make_slot(course, date, time, fee_group_id, fee_group_label, free):
+def make_slot(course, date, time, fee_group_id, fee_group_label, free, total=4):
     """Helper: build a single state entry."""
     key = f"{course}|{date}|{time}|{fee_group_id}"
-    return key, {"free": free, "fee_group_label": fee_group_label}
+    return key, {"free": free, "total": total, "fee_group_label": fee_group_label}
 
 
 def state_from(*entries):
@@ -37,6 +37,7 @@ def test_new_slot_inside_window_with_enough_spots_alerts():
     m = matches[0]
     assert m["time"] == "02:30 pm"
     assert m["free"] == 3
+    assert m["total"] == 4
     assert m["fee_group_id"] == "3784606"
     assert m["watch_label"] == "Sat arvo"
 

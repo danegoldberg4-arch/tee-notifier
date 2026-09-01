@@ -17,6 +17,7 @@ SAMPLE_MATCH = {
     "fee_group_id": "3784606",
     "fee_group_label": "SUNDOWNER (after 2:00pm)",
     "free": 3,
+    "total": 4,
     "watch_label": "Sat arvo with mates",
     "min_spots": 2,
     "booking_url": "https://www.eastlakegolfclub.com.au/guests/bookings/ViewPublicTimesheet.msp?bookingResourceId=3000000&selectedDate=2026-05-30&feeGroupId=3784606",
@@ -135,6 +136,21 @@ def test_count_update_shows_increase_with_up_arrow():
     assert "4 of 4" in content
     assert "was 2" in content
     assert "📈" in content
+
+
+def test_payload_uses_dynamic_total_not_hardcoded_four():
+    """A course with a non-4-slot tee should show its real total, not 'of 4'."""
+    match = {**SAMPLE_MATCH, "free": 2, "total": 3}
+    content = build_discord_payload(match)["content"]
+    assert "2 of 3" in content
+    assert "2 of 4" not in content
+
+
+def test_count_update_uses_dynamic_total():
+    match = {**SAMPLE_MATCH, "free": 1, "total": 3}
+    content = build_count_update_content(match, prev_free=3)
+    assert "1 of 3" in content
+    assert "was 3" in content
 
 
 def test_edit_message_patches_content_and_returns_true():
