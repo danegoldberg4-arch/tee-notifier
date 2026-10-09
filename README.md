@@ -6,7 +6,7 @@ Watches public tee-sheets of participating golf courses and posts a Discord `@he
 
 GitHub Actions runs `watcher.py` on a cron schedule (`*/20 22-23,0-9 * * *` UTC = every 20 min during AU daytime). Each run:
 
-1. Builds the watch. By default it generates rolling upcoming weekend slots (every Sat/Sun for the next `WATCH_WEEKS` weeks, all courses, 06:00 to 12:30, 2+ spots) from `courses.json`, so the watch never runs dry and needs no hand-editing. If a `watchlist.json` file is present it overrides generation and becomes the source of truth (manual mode).
+1. Builds the watch. By default it generates rolling upcoming weekend slots (every Sat/Sun for the next `WATCH_WEEKS` weeks, all courses, 06:00 to 13:30, 2+ spots) from `courses.json`, so the watch never runs dry and needs no hand-editing. If a `watchlist.json` file is present it overrides generation and becomes the source of truth (manual mode).
 2. Fetches each course's public calendar + timesheet pages.
 3. Diffs against `state.json` (the previous run's snapshot, persisted via GitHub Actions cache).
 4. Posts a Discord webhook message for any slot that newly satisfies a watch entry.
@@ -35,7 +35,7 @@ You can manually trigger a run from the Actions tab (workflow_dispatch) to test 
 
 ## What gets watched
 
-By default there is no `watchlist.json`. The watch is generated each run as rolling upcoming weekends across every course in `courses.json` (Sat/Sun, 06:00 to 12:30, `min_spots` 2), carrying each course's `fee_group_contains` filter. This is what you want for the standard "weekend morning rounds" use case, and it never needs maintaining.
+By default there is no `watchlist.json`. The watch is generated each run as rolling upcoming weekends across every course in `courses.json` (Sat/Sun, 06:00 to 13:30, `min_spots` 2), carrying each course's `fee_group_contains` filter. This is what you want for the standard "weekend morning rounds" use case, and it never needs maintaining.
 
 To watch something non-standard (a weekday, a different window, a one-off date), create a `watchlist.json` file. Its presence switches the watcher into manual mode and it becomes the sole source of truth. Add entries like:
 
