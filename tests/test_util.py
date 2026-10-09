@@ -27,7 +27,7 @@ def test_generate_watchlist_covers_upcoming_weekends_for_all_courses():
     wl = watcher.generate_watchlist(courses, "2026-06-29", weeks=1)
     assert sorted({e["date"] for e in wl}) == ["2026-07-04", "2026-07-05"]
     assert len(wl) == 2 * 2  # one entry per course per weekend day
-    assert all(e["earliest"] == "06:00" and e["latest"] == "12:30" for e in wl)
+    assert all(e["earliest"] == "06:00" and e["latest"] == "13:30" for e in wl)
     assert all(e["min_spots"] == 2 for e in wl)
 
 

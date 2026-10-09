@@ -364,7 +364,7 @@ def generate_watchlist(
     weeks: int = DEFAULT_WATCH_WEEKS,
     weekdays: tuple[int, ...] = (5, 6),
     earliest: str = "06:00",
-    latest: str = "12:30",
+    latest: str = "13:30",
     min_spots: int = 2,
 ) -> list[dict]:
     """Build rolling watch entries for upcoming weekend days across all courses.
