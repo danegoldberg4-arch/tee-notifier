@@ -1,0 +1,23 @@
+name: Keepalive
+
+# GitHub auto-disables scheduled workflows after 60 days without a repository
+# commit. This weekly empty commit keeps the repo active so the watcher's
+# workflow_dispatch endpoint stays alive indefinitely.
+on:
+  schedule:
+    - cron: '23 4 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  kick:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          git config user.name "keepalive-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git commit --allow-empty -m "chore: keepalive (reset 60-day inactivity clock)"
+          git push

@@ -364,7 +364,7 @@ def generate_watchlist(
     weeks: int = DEFAULT_WATCH_WEEKS,
     weekdays: tuple[int, ...] = (5, 6),
     earliest: str = "06:00",
-    latest: str = "13:30",
+    latest: str = "14:00",
     min_spots: int = 2,
 ) -> list[dict]:
     """Build rolling watch entries for upcoming weekend days across all courses.
@@ -468,6 +468,10 @@ def main(argv: list[str] | None = None) -> int:
     raw_prior = _load_json(STATE_PATH)
     prior_slots: dict = (raw_prior or {}).get("slots", {})
     posted_messages: dict = (raw_prior or {}).get("posted_messages", {})
+    # Seed-run guard: a missing or empty state file means we can't tell "newly
+    # open" from "was already open" -- alerting on everything would storm the
+    # channel with every currently-open slot. Snapshot only; next run diffs.
+    is_seed_run = raw_prior is None or not (prior_slots or posted_messages)
 
     # PURGE_STATE_KEYS env var: comma-separated state keys to drop from prior
     # so the next find_new_matches treats them as fresh. Used after widening
@@ -487,6 +491,7 @@ def main(argv: list[str] | None = None) -> int:
 
     # Scrape every (course, date) referenced by active entries.
     current_slots: dict = {}
+    failed_targets: set[tuple[str, str]] = set()
     targets = sorted({(w["course"], w["date"]) for w in active_watchlist})
     for course_key, target_date in targets:
         course = courses_by_key[course_key]
@@ -494,6 +499,7 @@ def main(argv: list[str] | None = None) -> int:
             calendar_html = fetch_calendar(course, target_date)
         except Exception as exc:
             print(f"WARN: failed to fetch calendar for {course_key} {target_date}: {exc}", file=sys.stderr)
+            failed_targets.add((course_key, target_date))
             continue
         fee_groups = discover_fee_groups(calendar_html, target_date)
         if not fee_groups:
@@ -515,6 +521,7 @@ def main(argv: list[str] | None = None) -> int:
                 ts_html = fetch_timesheet(course, target_date, fg["fee_group_id"])
             except Exception as exc:
                 print(f"WARN: failed to fetch timesheet for {course_key} {target_date} {fg['fee_group_id']}: {exc}", file=sys.stderr)
+                failed_targets.add((course_key, target_date))
                 continue
             parsed = parse_timesheet(ts_html)
             current_slots.update(_state_keys_for_date(
@@ -523,8 +530,22 @@ def main(argv: list[str] | None = None) -> int:
 
     print(f"INFO: scraped {len(current_slots)} slots across {len({(k.split('|')[0], k.split('|')[1]) for k in current_slots})} (course,date) pairs", file=sys.stderr)
 
-    # Identify matches. Empty prior state means every open slot is new.
-    matches = find_new_matches(prior_slots, current_slots, active_watchlist)
+    # Carry last-known counts forward for (course, date) pairs that failed to
+    # scrape, so their slots don't look like they vanished (which would falsely
+    # strike tracked messages and re-ping the slots next run).
+    for key, slot in prior_slots.items():
+        if key in current_slots:
+            continue
+        course_key, slot_date, *_ = key.split("|")
+        if (course_key, slot_date) in failed_targets:
+            current_slots[key] = slot
+
+    # Identify matches. A seed run (missing/empty prior state) snapshots only,
+    # so a cache miss can't storm the channel; the next run alerts on
+    # transitions against the freshly-seeded snapshot.
+    matches = [] if is_seed_run else find_new_matches(prior_slots, current_slots, active_watchlist)
+    if is_seed_run:
+        print(f"SEED: no prior state; snapshotted {len(current_slots)} slots without alerts", file=sys.stderr)
     print(f"INFO: {len(matches)} matches to post", file=sys.stderr)
 
     # Decorate matches with course_name and booking_url for the notifier.
@@ -541,7 +562,9 @@ def main(argv: list[str] | None = None) -> int:
     stale_message_keys: list[str] = []
     changed_message_keys: list[tuple[str, int]] = []  # (slot_key, prev_free)
     for slot_key, info in posted_messages.items():
-        _, slot_date, _, _ = slot_key.split("|")
+        course_key, slot_date, *_ = slot_key.split("|")
+        if (course_key, slot_date) in failed_targets:
+            continue  # scrape failed this run; staleness judged on a successful run
         cur = current_slots.get(slot_key)
         min_spots = _posted_min_spots(info)
         if slot_date < today or cur is None or cur.get("free", 0) < min_spots:

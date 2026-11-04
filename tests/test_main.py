@@ -45,17 +45,19 @@ def _fake_timesheet(_course, _date, fee_group_id):
     }[fee_group_id]
 
 
-def test_first_run_with_empty_state_alerts_on_all_open_slots(repo_tree):
-    """state.json starts as {} -> alert on every open slot (no seed-run suppression)."""
+def test_first_run_seeds_state_without_alerting(repo_tree):
+    """A missing/empty prior state is a seed run: snapshot the scraped slots,
+    post nothing. Prevents a storm of @here pings for every open slot after a
+    cache miss; the next run diffs against the snapshot and alerts normally."""
     (repo_tree / "state.json").write_text("{}")
     with patch("watcher.fetch_calendar", side_effect=_fake_calendar), \
          patch("watcher.fetch_timesheet", side_effect=_fake_timesheet), \
          patch("watcher.post_alert") as mock_post:
         exit_code = watcher.main(["--webhook", "https://discord/fake"])
     assert exit_code == 0
-    mock_post.assert_called()  # alerts fired for open slots
+    mock_post.assert_not_called()  # seed-only: no alerts on the first run
     state = json.loads((repo_tree / "state.json").read_text())
-    assert "slots" in state and len(state["slots"]) > 0  # state was written
+    assert len(state["slots"]) > 0  # snapshot persisted for the next run's diff
 
 
 def test_second_run_alerts_on_newly_opened_slot(repo_tree):
@@ -85,7 +87,15 @@ def test_second_run_alerts_on_newly_opened_slot(repo_tree):
 def test_unconfirmed_alert_is_retried_next_run(repo_tree):
     """post_alert returning None (429 exhaustion / missing id) must not silently
     swallow the alert: the slot is dropped from state so the next run re-fires it."""
-    (repo_tree / "state.json").write_text("{}")
+    prior = {
+        "last_run": "2026-05-26T00:00:00Z",
+        "slots": {
+            "eastlake|2026-05-30|02:30 pm|3784606": {
+                "free": 0, "fee_group_label": "SUNDOWNER (after 2:00pm)",
+            }
+        },
+    }
+    (repo_tree / "state.json").write_text(json.dumps(prior))
     with patch("watcher.fetch_calendar", side_effect=_fake_calendar), \
          patch("watcher.fetch_timesheet", side_effect=_fake_timesheet), \
          patch("watcher.post_alert", return_value=None) as mock_post:
@@ -398,3 +408,40 @@ def test_main_manual_watchlist_file_overrides_generation(repo_tree):
         exit_code = watcher.main(["--webhook", "https://discord/fake"])
     assert exit_code == 0
     assert set(seen_dates) == {"2026-05-30"}  # only the file's entry, no rolling dates
+
+def test_transient_fetch_failure_keeps_tracked_message_and_state(repo_tree):
+    """A calendar fetch failure must not strike through a live tracked slot nor
+    let the next run re-ping it: prior counts carry forward and staleness is
+    left to a run that actually scraped the course."""
+    slot_key = "eastlake|2026-05-30|02:30 pm|3784606"
+    prior = {
+        "last_run": "2026-05-29T00:00:00Z",
+        "slots": {slot_key: {"free": 4, "fee_group_label": "SUNDOWNER (after 2:00pm)"}},
+        "posted_messages": {
+            slot_key: {"message_id": "777", "match": {
+                "course": "eastlake", "course_name": "Eastlake Golf Club",
+                "date": "2026-05-30", "time": "02:30 pm",
+                "fee_group_id": "3784606", "fee_group_label": "SUNDOWNER (after 2:00pm)",
+                "free": 4, "watch_label": "Sat arvo", "min_spots": 2,
+                "booking_url": "https://example/book",
+            }},
+        },
+    }
+    (repo_tree / "state.json").write_text(json.dumps(prior))
+
+    def _dead_calendar(_course, _date):
+        raise ConnectionError("transient network error")
+
+    with patch("watcher.fetch_calendar", side_effect=_dead_calendar), \
+         patch("watcher.fetch_timesheet", side_effect=_fake_timesheet), \
+         patch("watcher.post_alert") as mock_post, \
+         patch("watcher.edit_message_to_strikethrough") as mock_strike:
+        exit_code = watcher.main(["--webhook", "https://discord/fake"])
+
+    assert exit_code == 0
+    mock_post.assert_not_called()    # carried-forward counts aren't a new transition
+    mock_strike.assert_not_called()  # can't judge staleness without a scrape
+
+    state = json.loads((repo_tree / "state.json").read_text())
+    assert slot_key in state["slots"]            # prior counts carried forward
+    assert slot_key in state["posted_messages"]  # message still tracked

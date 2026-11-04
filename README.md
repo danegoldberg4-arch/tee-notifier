@@ -4,9 +4,9 @@ Watches public tee-sheets of participating golf courses and posts a Discord `@he
 
 ## How it works
 
-GitHub Actions runs `watcher.py` on a cron schedule (`*/20 22-23,0-9 * * *` UTC = every 20 min during AU daytime). Each run:
+The watcher runs on GitHub Actions, fired by an external cron pinger hitting `workflow_dispatch` every 20 minutes (see setup below). Each run:
 
-1. Builds the watch. By default it generates rolling upcoming weekend slots (every Sat/Sun for the next `WATCH_WEEKS` weeks, all courses, 06:00 to 13:30, 2+ spots) from `courses.json`, so the watch never runs dry and needs no hand-editing. If a `watchlist.json` file is present it overrides generation and becomes the source of truth (manual mode).
+1. Builds the watch. By default it generates rolling upcoming weekend slots (every Sat/Sun for the next `WATCH_WEEKS` weeks, all courses, 06:00 to 14:00, 2+ spots) from `courses.json`, so the watch never runs dry and needs no hand-editing. If a `watchlist.json` file is present it overrides generation and becomes the source of truth (manual mode).
 2. Fetches each course's public calendar + timesheet pages.
 3. Diffs against `state.json` (the previous run's snapshot, persisted via GitHub Actions cache).
 4. Posts a Discord webhook message for any slot that newly satisfies a watch entry.
@@ -18,10 +18,25 @@ GitHub Actions runs `watcher.py` on a cron schedule (`*/20 22-23,0-9 * * *` UTC 
    - Settings -> Secrets and variables -> Actions -> New repository secret
    - Name: `DISCORD_WEBHOOK_URL` -- your Discord channel webhook URL
 
-2. **Optional: adjust the cron schedule.**
-   The workflow in `.github/workflows/watch.yml` declares `*/20 22-23,0-9 * * *` (UTC). Edit and push to change cadence.
+2. **Set up the external pinger (this is what makes it run every 20 min).**
+   GitHub's built-in scheduler throttles frequent cron workflows to roughly 3 runs/day (observed at both `*/10` and `*/20`), so the Watch workflow is dispatch-only and an external cron service fires it:
+
+   1. Create a fine-grained PAT: GitHub Settings -> Developer settings -> Fine-grained personal access tokens -> Generate. Repository access: only this repo. Permissions: Actions -> Read and write.
+   2. Create a free [cron-job.org](https://cron-job.org) account and add a job running every 20 minutes with:
+
+      ```
+      curl -fsS -X POST \
+        -H "Authorization: Bearer <YOUR_PAT>" \
+        -H "Accept: application/vnd.github+json" \
+        https://api.github.com/repos/danegoldberg4-arch/tee-notifier/actions/workflows/watch.yml/dispatches \
+        -d '{"ref":"main"}'
+      ```
+
+   Overlapping dispatches are safe -- the workflow's concurrency group serializes them.
 
 3. **First run will seed `state.json`.** No Discord pings on the first run (seed-only behaviour). Subsequent runs alert on newly-available slots.
+
+4. **Keepalive is automatic.** A weekly workflow pushes an empty commit, resetting GitHub's 60-day inactivity clock that would otherwise auto-disable the watcher.
 
 State persistence uses GitHub Actions cache -- `state.json` is saved after each run and restored before the next. No persistent server or volume needed.
 
@@ -35,7 +50,7 @@ You can manually trigger a run from the Actions tab (workflow_dispatch) to test 
 
 ## What gets watched
 
-By default there is no `watchlist.json`. The watch is generated each run as rolling upcoming weekends across every course in `courses.json` (Sat/Sun, 06:00 to 13:30, `min_spots` 2), carrying each course's `fee_group_contains` filter. This is what you want for the standard "weekend morning rounds" use case, and it never needs maintaining.
+By default there is no `watchlist.json`. The watch is generated each run as rolling upcoming weekends across every course in `courses.json` (Sat/Sun, 06:00 to 14:00, `min_spots` 2), carrying each course's `fee_group_contains` filter. This is what you want for the standard "weekend morning rounds" use case, and it never needs maintaining.
 
 To watch something non-standard (a weekday, a different window, a one-off date), create a `watchlist.json` file. Its presence switches the watcher into manual mode and it becomes the sole source of truth. Add entries like:
 
@@ -51,7 +66,7 @@ To watch something non-standard (a weekday, a different window, a one-off date),
 }
 ```
 
-Commit and push. The next scheduled run will pick it up.
+Commit and push. The next watcher run will pick it up.
 
 Fields:
 - `course` -- must match a `key` in `courses.json`.
@@ -96,6 +111,7 @@ It's designed to fail loud -- the GitHub Actions run will show as failed:
 - The booking platform enabled CAPTCHA (`publicCaptchaEnabled = true` detected, or unfamiliar HTML returned).
 - The Discord webhook returns non-2xx.
 - A watchlist entry references an unknown course key.
+- No runs at all -- the external pinger died or its PAT expired. Check the cron-job.org job history and the token's expiry date first.
 
 Check the failed run's logs in the Actions tab to diagnose. Non-fatal cases (HTTP errors per course, dates outside a course's booking horizon) log a `WARN` but continue.
 

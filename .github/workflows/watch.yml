@@ -1,8 +1,9 @@
 name: Watch
 
 on:
-  schedule:
-    - cron: '*/20 22-23,0-9 * * *'
+  # Dispatch-only: GitHub's scheduler throttles frequent crons to ~3 runs/day
+  # (observed at both */10 and */20), so cadence comes from an external pinger
+  # hitting workflow_dispatch every 20 min. See README for pinger setup.
   workflow_dispatch:
 
 concurrency:
