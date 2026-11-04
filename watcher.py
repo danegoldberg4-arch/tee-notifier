@@ -275,6 +275,56 @@ def post_alert(webhook_url: str, match: dict, max_retries: int = 5) -> str | Non
     return None
 
 
+def build_dashboard_content(open_slots: list[dict], courses_by_key: dict) -> str:
+    """Rolling 'open now' summary for the channel dashboard message.
+
+    Lists every slot currently satisfying a watch entry (current state, not
+    transitions). The dashboard message is edited in place every run, and
+    edits never ping, so refreshing it is silent.
+    """
+    stamp = datetime.now(SYDNEY_TZ).strftime("%a %d %b %I:%M %p")
+    header = f"⛳ **Open now** — updated {stamp} (Sydney)"
+    if not open_slots:
+        return header + "\nNothing matching the watch is open right now."
+    by_day: dict[str, list[dict]] = {}
+    seen: set[str] = set()
+    for m in open_slots:
+        key = f"{m['course']}|{m['date']}|{m['time']}|{m['fee_group_id']}"
+        if key in seen:
+            continue
+        seen.add(key)
+        by_day.setdefault(m["date"], []).append(m)
+    lines: list[str] = []
+    for date in sorted(by_day):
+        pretty = _format_date_for_humans(date)
+        for m in sorted(by_day[date], key=lambda x: _slot_time_to_minutes(x["time"])):
+            lines.append(f"**{courses_by_key[m['course']]['name']}** · {pretty}: {m['time']} ({m['free']} free)")
+    body = "\n".join(lines)
+    hidden = 0
+    while len(body) > 1800 and "\n" in body:  # Discord hard limit: 2000 chars
+        body = body.rsplit("\n", 1)[0]
+        hidden += 1
+    if hidden:
+        body += f"\n(+{hidden} more slots omitted)"
+    return f"{header}\n{body}"
+
+
+def post_dashboard(webhook_url: str, content: str) -> str | None:
+    """Post the dashboard message (no mention); returns its message id."""
+    url = webhook_url + ("&" if "?" in webhook_url else "?") + "wait=true"
+    response = requests.post(
+        url,
+        json={"content": content, "allowed_mentions": {"parse": []}},
+        headers={"User-Agent": USER_AGENT},
+        timeout=HTTP_TIMEOUT_SECONDS,
+    )
+    response.raise_for_status()
+    try:
+        return response.json().get("id")
+    except Exception:
+        return None
+
+
 def strikethrough_content(original: str) -> str:
     """Rewrite a previously-posted alert's content into strikethrough form.
 
@@ -485,6 +535,7 @@ def main(argv: list[str] | None = None) -> int:
     raw_prior = _load_json(STATE_PATH)
     prior_slots: dict = (raw_prior or {}).get("slots", {})
     posted_messages: dict = (raw_prior or {}).get("posted_messages", {})
+    dashboard_message_id = (raw_prior or {}).get("dashboard_message_id")
     # Seed-run guard: a missing or empty state file means we can't tell "newly
     # open" from "was already open" -- alerting on everything would storm the
     # channel with every currently-open slot. Snapshot only; next run diffs.
@@ -607,6 +658,7 @@ def main(argv: list[str] | None = None) -> int:
             "last_run": datetime.now(timezone.utc).isoformat(timespec="seconds"),
             "slots": current_slots,
             "posted_messages": posted_messages,
+            "dashboard_message_id": dashboard_message_id,
         }
         STATE_PATH.write_text(json.dumps(new_state, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
@@ -684,6 +736,26 @@ def main(argv: list[str] | None = None) -> int:
         # Proactive pacing — Discord webhook channels allow ~30 msg/min.
         if idx + 1 < len(matches):
             time.sleep(EDIT_PACING_SECONDS)
+
+    # Rolling "open now" dashboard: one message, edited every run, listing all
+    # slots currently matching the watch. Alerts are transition-only, so the
+    # channel otherwise has no view of current state. Edits never ping.
+    if webhook_url:
+        open_slots = find_new_matches({}, current_slots, active_watchlist)
+        content = build_dashboard_content(open_slots, courses_by_key)
+        if dashboard_message_id:
+            try:
+                if not edit_message(webhook_url, dashboard_message_id, content):
+                    dashboard_message_id = None  # deleted by hand; re-post below
+            except Exception as exc:
+                print(f"WARN: failed to edit dashboard message: {exc}", file=sys.stderr)
+        if not dashboard_message_id:
+            try:
+                new_id = post_dashboard(webhook_url, content)
+                if new_id:
+                    dashboard_message_id = str(new_id)
+            except Exception as exc:
+                print(f"WARN: failed to post dashboard message: {exc}", file=sys.stderr)
 
     _persist_state()
     # Reap past entries only in manual mode; generated watchlists are never on disk.

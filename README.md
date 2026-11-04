@@ -11,6 +11,7 @@ The watcher runs on GitHub Actions, fired by an external cron pinger hitting `wo
 3. Diffs against `state.json` (the previous run's snapshot, persisted via GitHub Actions cache).
 4. Posts a Discord webhook message for any slot that newly satisfies a watch entry.
 5. Edits previously-alerted messages to ~~strikethrough~~ when their slot is booked / passes / vanishes.
+6. Maintains a rolling "⛳ Open now" dashboard message — edited every run to list every slot currently matching the watch (current state, not just transitions). Pin it in the channel; it never pings.
 
 ## GitHub Actions setup (one-time)
 

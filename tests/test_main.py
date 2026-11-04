@@ -445,3 +445,76 @@ def test_transient_fetch_failure_keeps_tracked_message_and_state(repo_tree):
     state = json.loads((repo_tree / "state.json").read_text())
     assert slot_key in state["slots"]            # prior counts carried forward
     assert slot_key in state["posted_messages"]  # message still tracked
+
+
+def test_dashboard_posted_on_seed_run_without_alerts(repo_tree):
+    """First-ever run: no alert storm (seed), but the rolling 'open now'
+    dashboard is posted so the channel shows current state immediately."""
+    (repo_tree / "state.json").write_text("{}")
+    with patch("watcher.fetch_calendar", side_effect=_fake_calendar), \
+         patch("watcher.fetch_timesheet", side_effect=_fake_timesheet), \
+         patch("watcher.post_alert") as mock_post, \
+         patch("watcher.post_dashboard", return_value="555") as mock_dash:
+        exit_code = watcher.main(["--webhook", "https://discord/fake"])
+    assert exit_code == 0
+    mock_post.assert_not_called()
+    mock_dash.assert_called_once()
+    content = mock_dash.call_args.args[1]
+    assert "@here" not in content
+    assert "Open now" in content
+    assert "Eastlake" in content
+    state = json.loads((repo_tree / "state.json").read_text())
+    assert state["dashboard_message_id"] == "555"
+
+
+def test_dashboard_edited_in_place_on_later_runs(repo_tree):
+    """With a tracked dashboard message id, later runs PATCH it — no repost."""
+    prior = {
+        "last_run": "2026-05-29T00:00:00Z",
+        "slots": {
+            "eastlake|2026-05-30|02:30 pm|3784606": {
+                "free": 4, "fee_group_label": "SUNDOWNER (after 2:00pm)",
+            }
+        },
+        "posted_messages": {},
+        "dashboard_message_id": "555",
+    }
+    (repo_tree / "state.json").write_text(json.dumps(prior))
+    with patch("watcher.fetch_calendar", side_effect=_fake_calendar), \
+         patch("watcher.fetch_timesheet", side_effect=_fake_timesheet), \
+         patch("watcher.post_alert"), \
+         patch("watcher.edit_message", return_value=True) as mock_edit, \
+         patch("watcher.post_dashboard") as mock_dash:
+        exit_code = watcher.main(["--webhook", "https://discord/fake"])
+    assert exit_code == 0
+    mock_dash.assert_not_called()
+    mock_edit.assert_called_once()  # only the dashboard edit; no tracked alerts
+    assert mock_edit.call_args.args[1] == "555"
+    assert "Open now" in mock_edit.call_args.args[2]
+    state = json.loads((repo_tree / "state.json").read_text())
+    assert state["dashboard_message_id"] == "555"
+
+
+def test_dashboard_reposted_after_manual_delete(repo_tree):
+    """A hand-deleted dashboard (PATCH 404) is re-posted and the new id tracked."""
+    prior = {
+        "last_run": "2026-05-29T00:00:00Z",
+        "slots": {
+            "eastlake|2026-05-30|02:30 pm|3784606": {
+                "free": 4, "fee_group_label": "SUNDOWNER (after 2:00pm)",
+            }
+        },
+        "posted_messages": {},
+        "dashboard_message_id": "555",
+    }
+    (repo_tree / "state.json").write_text(json.dumps(prior))
+    with patch("watcher.fetch_calendar", side_effect=_fake_calendar), \
+         patch("watcher.fetch_timesheet", side_effect=_fake_timesheet), \
+         patch("watcher.post_alert"), \
+         patch("watcher.edit_message", return_value=False), \
+         patch("watcher.post_dashboard", return_value="777") as mock_dash:
+        exit_code = watcher.main(["--webhook", "https://discord/fake"])
+    assert exit_code == 0
+    mock_dash.assert_called_once()
+    state = json.loads((repo_tree / "state.json").read_text())
+    assert state["dashboard_message_id"] == "777"
