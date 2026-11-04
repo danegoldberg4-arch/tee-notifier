@@ -60,5 +60,12 @@
     "base_url": "https://www.bankstowngolf.com.au",
     "booking_resource_id": 3000000,
     "fee_group_contains": "18"
+  },
+  {
+    "key": "stonecutters",
+    "name": "Stonecutters Ridge Golf Club",
+    "base_url": "https://stonecutters.miclub.com.au",
+    "booking_resource_id": 3000000,
+    "fee_group_contains": "18"
   }
 ]

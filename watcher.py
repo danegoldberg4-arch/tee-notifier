@@ -23,7 +23,7 @@ _FEE_GROUP_ROW_RE = re.compile(
 )
 _LABEL_RE = re.compile(r"<h3>\s*(?P<label>[^<]+?)\s*</h3>", re.IGNORECASE)
 _CELL_DATE_RE = re.compile(
-    r"redirectToTimesheet\(\s*'(?P<fee>\d+)'\s*,\s*'(?P<date>\d{4}-\d{2}-\d{2})'\s*\)",
+    r"redirectToTimesheet\(\s*'(?P<fee>\d+)'\s*,\s*'(?P<date>[^']*)'\s*\)",
     re.IGNORECASE,
 )
 
@@ -52,6 +52,23 @@ def _looks_like_captcha_or_broken(html: str) -> bool:
         return True
     return False
 
+_JS_CELL_DATE_RE = re.compile(
+    r"^[A-Z][a-z]{2}\s+(?P<mon>[A-Z][a-z]{2})\s+(?P<day>\d{1,2})\s+\d{2}:\d{2}:\d{2}\s+\S+\s+(?P<year>\d{4})$"
+)
+
+
+def _normalize_cell_date(raw: str) -> str | None:
+    """Calendar cell dates come in two forms: ISO '2026-05-30' (Eastlake era)
+    or Java Date.toString, e.g. 'Sat Nov 07 00:00:00 AEDT 2026' (newer MiClub
+    pages such as Stonecutters Ridge). Normalize both to ISO."""
+    if re.fullmatch(r"\d{4}-\d{2}-\d{2}", raw):
+        return raw
+    m = _JS_CELL_DATE_RE.match(raw)
+    if m:
+        month = _MONTH_NAMES.index(m.group("mon"))
+        return f"{m.group('year')}-{month:02d}-{int(m.group('day')):02d}"
+    return None
+
 
 def discover_fee_groups(html: str, target_date: str) -> list[dict]:
     """Return active fee groups for ``target_date`` from a ViewPublicCalendar page.
@@ -63,7 +80,7 @@ def discover_fee_groups(html: str, target_date: str) -> list[dict]:
 
     fee_ids_with_target_date: set[str] = {
         m.group("fee") for m in _CELL_DATE_RE.finditer(cleaned)
-        if m.group("date") == target_date
+        if _normalize_cell_date(m.group("date")) == target_date
     }
     if not fee_ids_with_target_date:
         return []

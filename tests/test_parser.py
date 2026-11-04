@@ -60,3 +60,24 @@ def test_parse_timesheet_strips_js_string_literals():
     slots = parse_timesheet(html)
     # If JS strings leaked in, totals would exceed 4 cells per time block.
     assert all(c["free"] + c["taken"] == 4 for c in slots.values())
+
+
+def test_discover_fee_groups_js_style_cell_dates():
+    """Newer MiClub pages (e.g. Stonecutters Ridge) emit Java-Date cell onclicks
+    like redirectToTimesheet('1509251471','Sat Nov 07 00:00:00 AEDT 2026').
+    They must normalize to ISO and still match the target date."""
+    html = (
+        '<script>var publicCaptchaEnabled = false;</script>'
+        '<div class="row feeGroupRow feeGroupId-1509251471 eighteenHoles">'
+        "<h3>18 Hole</h3>"
+        '<div onclick="javascript:redirectToTimesheet(\'1509251471\',\'Sat Nov 07 00:00:00 AEDT 2026\');"></div>'
+        '<div onclick="javascript:redirectToTimesheet(\'1509251471\',\'Sun Nov 08 00:00:00 AEDT 2026\');"></div>'
+        "</div>"
+    )
+    groups = discover_fee_groups(html, target_date="2026-11-07")
+    assert len(groups) == 1
+    assert groups[0]["fee_group_id"] == "1509251471"
+    assert groups[0]["label"] == "18 Hole"
+
+    # A date the calendar isn't showing must still come back empty.
+    assert discover_fee_groups(html, target_date="2026-11-14") == []
