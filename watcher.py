@@ -278,27 +278,40 @@ def post_alert(webhook_url: str, match: dict, max_retries: int = 5) -> str | Non
 def build_dashboard_content(open_slots: list[dict], courses_by_key: dict) -> str:
     """Rolling 'open now' summary for the channel dashboard message.
 
-    Lists every slot currently satisfying a watch entry (current state, not
-    transitions). The dashboard message is edited in place every run, and
-    edits never ping, so refreshing it is silent.
+    Groups every slot currently satisfying a watch entry (current state, not
+    transitions) under date headers — earliest upcoming first — with one
+    linked line per club + rate, times chronological. The dashboard message
+    is edited in place every run, and edits never ping, so refreshing it is
+    silent.
     """
     stamp = datetime.now(SYDNEY_TZ).strftime("%a %d %b %I:%M %p")
     header = f"⛳ **Open now** — updated {stamp} (Sydney)"
     if not open_slots:
         return header + "\nNothing matching the watch is open right now."
-    by_day: dict[str, list[dict]] = {}
+    by_day: dict[str, dict[tuple[str, str], list[dict]]] = {}
     seen: set[str] = set()
     for m in open_slots:
         key = f"{m['course']}|{m['date']}|{m['time']}|{m['fee_group_id']}"
         if key in seen:
             continue
         seen.add(key)
-        by_day.setdefault(m["date"], []).append(m)
+        group = (m["course"], m["fee_group_id"])
+        by_day.setdefault(m["date"], {}).setdefault(group, []).append(m)
     lines: list[str] = []
     for date in sorted(by_day):
-        pretty = _format_date_for_humans(date)
-        for m in sorted(by_day[date], key=lambda x: _slot_time_to_minutes(x["time"])):
-            lines.append(f"**{courses_by_key[m['course']]['name']}** · {pretty}: {m['time']} ({m['free']} free)")
+        lines.append(f"**{_format_date_for_humans(date)}**")
+        groups = by_day[date]
+        ordered = sorted(
+            groups.items(),
+            key=lambda kv: min(_slot_time_to_minutes(s["time"]) for s in kv[1]),
+        )
+        for (course_key, fee_group_id), slots in ordered:
+            slots.sort(key=lambda s: _slot_time_to_minutes(s["time"]))
+            course = courses_by_key[course_key]
+            url = timesheet_url(course, date, fee_group_id)
+            label = slots[0]["fee_group_label"] or "Tee times"
+            times = ", ".join(f"{s['time']} ({s['free']} free)" for s in slots)
+            lines.append(f"[{course['name']} · {label}]({url}): {times}")
     body = "\n".join(lines)
     hidden = 0
     while len(body) > 1800 and "\n" in body:  # Discord hard limit: 2000 chars

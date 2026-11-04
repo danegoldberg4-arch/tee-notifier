@@ -463,6 +463,8 @@ def test_dashboard_posted_on_seed_run_without_alerts(repo_tree):
     assert "@here" not in content
     assert "Open now" in content
     assert "Eastlake" in content
+    assert "Sat 30 May" in content  # date header, earliest upcoming first
+    assert "eastlakegolfclub.com.au" in content  # booking link per club line
     state = json.loads((repo_tree / "state.json").read_text())
     assert state["dashboard_message_id"] == "555"
 
