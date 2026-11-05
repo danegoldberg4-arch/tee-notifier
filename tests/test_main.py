@@ -530,7 +530,7 @@ def test_dashboard_splits_long_lists_across_embeds():
                            "base_url": "https://www.eastlakegolfclub.com.au",
                            "booking_resource_id": 3000000}}
     times = [f"{h:02d}:{m:02d} am" for h in range(6, 12) for m in range(0, 60, 15)]
-    times += [f"{h:02d}:{m:02d} pm" for h in range(12, 14) for m in range(0, 60, 15)]
+    times += [f"{(h % 12) or 12:02d}:{m:02d} pm" for h in range(12, 14) for m in range(0, 60, 15)]
     open_slots = []
     for date in ("2026-06-06", "2026-06-13", "2026-06-20", "2026-06-27",
                  "2026-07-04", "2026-07-11", "2026-07-18", "2026-07-25"):
