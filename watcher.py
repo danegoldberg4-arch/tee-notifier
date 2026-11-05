@@ -275,20 +275,20 @@ def post_alert(webhook_url: str, match: dict, max_retries: int = 5) -> str | Non
     return None
 
 
-def build_dashboard_embed(open_slots: list[dict], courses_by_key: dict) -> dict:
-    """Rolling 'open now' embed for the channel dashboard message.
+def build_dashboard_embeds(open_slots: list[dict], courses_by_key: dict) -> list[dict]:
+    """Rolling 'open now' embeds for the channel dashboard.
 
     Groups every slot currently satisfying a watch entry (current state, not
     transitions) under date headers — earliest upcoming first — with one
-    linked line per club + rate, times chronological. Sent as an embed:
-    descriptions get 4096 chars (plain message content caps at 2000, and the
-    long booking URLs eat that fast). The message is edited in place every
-    run, and edits never ping, so refreshing it is silent.
+    linked line per club + rate, times chronological. Plain message content
+    caps at 2000 chars and a single embed description caps at 4096, so long
+    lists are split across several embeds — never truncated. The messages are
+    edited in place every run, and edits never ping, so refreshing is silent.
     """
     stamp = datetime.now(SYDNEY_TZ).strftime("%a %d %b %I:%M %p")
     title = f"⛳ Open now — updated {stamp} (Sydney)"
     if not open_slots:
-        return {"title": title, "description": "Nothing matching the watch is open right now.", "color": 0x57F287}
+        return [{"title": title, "description": "Nothing matching the watch is open right now.", "color": 0x57F287}]
     by_day: dict[str, dict[tuple[str, str], list[dict]]] = {}
     seen: set[str] = set()
     for m in open_slots:
@@ -313,14 +313,22 @@ def build_dashboard_embed(open_slots: list[dict], courses_by_key: dict) -> dict:
             label = slots[0]["fee_group_label"] or "Tee times"
             times = ", ".join(f"{s['time']} ({s['free']} free)" for s in slots)
             lines.append(f"[{course['name']} · {label}]({url}): {times}")
-    body = "\n".join(lines)
-    hidden = 0
-    while len(body) > 3900 and "\n" in body:  # embed description limit: 4096
-        body = body.rsplit("\n", 1)[0]
-        hidden += 1
-    if hidden:
-        body += f"\n(+{hidden} more slots omitted)"
-    return {"title": title, "description": body, "color": 0x57F287}
+    # Pack lines into embeds, each within Discord's 4096-char description cap.
+    chunks: list[list[str]] = []
+    current: list[str] = []
+    for line in lines:
+        if current and len("\n".join(current)) + 1 + len(line) > 3800:
+            chunks.append(current)
+            current = []
+        current.append(line)
+    if current:
+        chunks.append(current)
+    total = len(chunks)
+    embeds = []
+    for i, chunk in enumerate(chunks):
+        part = f" — part {i + 1}/{total}" if total > 1 else ""
+        embeds.append({"title": f"{title}{part}", "description": "\n".join(chunk), "color": 0x57F287})
+    return embeds
 
 
 def post_dashboard(webhook_url: str, embed: dict) -> str | None:
@@ -337,6 +345,21 @@ def post_dashboard(webhook_url: str, embed: dict) -> str | None:
         return response.json().get("id")
     except Exception:
         return None
+
+
+def delete_dashboard_message(webhook_url: str, message_id: str) -> bool:
+    """DELETE a surplus dashboard message (the list shrank).
+
+    Returns True when the message is gone (204, or 404 if already deleted);
+    False on any other outcome so the caller can fall back to stubbing it.
+    """
+    base = webhook_url.split("?", 1)[0].rstrip("/")
+    response = requests.delete(
+        f"{base}/messages/{message_id}",
+        headers={"User-Agent": USER_AGENT},
+        timeout=HTTP_TIMEOUT_SECONDS,
+    )
+    return response.status_code in (204, 404)
 
 
 def strikethrough_content(original: str) -> str:
@@ -556,7 +579,10 @@ def main(argv: list[str] | None = None) -> int:
     raw_prior = _load_json(STATE_PATH)
     prior_slots: dict = (raw_prior or {}).get("slots", {})
     posted_messages: dict = (raw_prior or {}).get("posted_messages", {})
-    dashboard_message_id = (raw_prior or {}).get("dashboard_message_id")
+    dashboard_message_ids: list = (raw_prior or {}).get("dashboard_message_ids")
+    if dashboard_message_ids is None:
+        legacy = (raw_prior or {}).get("dashboard_message_id")
+        dashboard_message_ids = [legacy] if legacy else []
     # Seed-run guard: a missing or empty state file means we can't tell "newly
     # open" from "was already open" -- alerting on everything would storm the
     # channel with every currently-open slot. Snapshot only; next run diffs.
@@ -679,7 +705,7 @@ def main(argv: list[str] | None = None) -> int:
             "last_run": datetime.now(timezone.utc).isoformat(timespec="seconds"),
             "slots": current_slots,
             "posted_messages": posted_messages,
-            "dashboard_message_id": dashboard_message_id,
+            "dashboard_message_ids": dashboard_message_ids,
         }
         STATE_PATH.write_text(json.dumps(new_state, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
@@ -758,25 +784,43 @@ def main(argv: list[str] | None = None) -> int:
         if idx + 1 < len(matches):
             time.sleep(EDIT_PACING_SECONDS)
 
-    # Rolling "open now" dashboard: one message, edited every run, listing all
-    # slots currently matching the watch. Alerts are transition-only, so the
+    # Rolling "open now" dashboard: one or more messages, edited every run,
+    # listing every slot currently matching the watch — split across messages
+    # when long so nothing is truncated. Alerts are transition-only, so the
     # channel otherwise has no view of current state. Edits never ping.
     if webhook_url:
         open_slots = find_new_matches({}, current_slots, active_watchlist)
-        embed = build_dashboard_embed(open_slots, courses_by_key)
-        if dashboard_message_id:
-            try:
-                if not edit_message(webhook_url, dashboard_message_id, embed=embed):
-                    dashboard_message_id = None  # deleted by hand; re-post below
-            except Exception as exc:
-                print(f"WARN: failed to edit dashboard message: {exc}", file=sys.stderr)
-        if not dashboard_message_id:
-            try:
-                new_id = post_dashboard(webhook_url, embed)
-                if new_id:
-                    dashboard_message_id = str(new_id)
-            except Exception as exc:
-                print(f"WARN: failed to post dashboard message: {exc}", file=sys.stderr)
+        embeds = build_dashboard_embeds(open_slots, courses_by_key)
+        # ids stay index-aligned to chunks; a None placeholder keeps alignment
+        # when a post fails so the next run retries the right chunk.
+        for i, embed in enumerate(embeds):
+            mid = dashboard_message_ids[i] if i < len(dashboard_message_ids) else None
+            if mid:
+                try:
+                    if not edit_message(webhook_url, mid, embed=embed):
+                        mid = None  # deleted by hand; re-post below
+                except Exception as exc:
+                    print(f"WARN: failed to edit dashboard message {i + 1}: {exc}", file=sys.stderr)
+            if not mid:
+                try:
+                    new_id = post_dashboard(webhook_url, embed)
+                    mid = str(new_id) if new_id else None
+                except Exception as exc:
+                    print(f"WARN: failed to post dashboard message {i + 1}: {exc}", file=sys.stderr)
+                    mid = None
+            if i < len(dashboard_message_ids):
+                dashboard_message_ids[i] = mid
+            else:
+                dashboard_message_ids.append(mid)
+        # The list shrank: clean up surplus tracked messages beyond the last chunk.
+        for mid in dashboard_message_ids[len(embeds):]:
+            if mid:
+                try:
+                    if not delete_dashboard_message(webhook_url, mid):
+                        edit_message(webhook_url, mid, content="_(superseded dashboard message)_")
+                except Exception as exc:
+                    print(f"WARN: failed to clean up surplus dashboard message: {exc}", file=sys.stderr)
+        del dashboard_message_ids[len(embeds):]
 
     _persist_state()
     # Reap past entries only in manual mode; generated watchlists are never on disk.

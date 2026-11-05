@@ -467,7 +467,7 @@ def test_dashboard_posted_on_seed_run_without_alerts(repo_tree):
     assert "Sat 30 May" in desc  # date header, earliest upcoming first
     assert "eastlakegolfclub.com.au" in desc  # booking link per club line
     state = json.loads((repo_tree / "state.json").read_text())
-    assert state["dashboard_message_id"] == "555"
+    assert state["dashboard_message_ids"] == ["555"]
 
 
 def test_dashboard_edited_in_place_on_later_runs(repo_tree):
@@ -495,7 +495,7 @@ def test_dashboard_edited_in_place_on_later_runs(repo_tree):
     assert mock_edit.call_args.args[1] == "555"
     assert "Open now" in mock_edit.call_args.kwargs["embed"]["title"]
     state = json.loads((repo_tree / "state.json").read_text())
-    assert state["dashboard_message_id"] == "555"
+    assert state["dashboard_message_ids"] == ["555"]
 
 
 def test_dashboard_reposted_after_manual_delete(repo_tree):
@@ -520,4 +520,58 @@ def test_dashboard_reposted_after_manual_delete(repo_tree):
     assert exit_code == 0
     mock_dash.assert_called_once()
     state = json.loads((repo_tree / "state.json").read_text())
-    assert state["dashboard_message_id"] == "777"
+    assert state["dashboard_message_ids"] == ["777"]
+
+
+def test_dashboard_splits_long_lists_across_embeds():
+    """A long open-slot list must never be truncated: lines pack into multiple
+    embeds, each within Discord's 4096-char description limit."""
+    by_key = {"eastlake": {"key": "eastlake", "name": "Eastlake Golf Club",
+                           "base_url": "https://www.eastlakegolfclub.com.au",
+                           "booking_resource_id": 3000000}}
+    times = [f"{h:02d}:{m:02d} am" for h in range(6, 12) for m in range(0, 60, 15)]
+    times += [f"{h:02d}:{m:02d} pm" for h in range(12, 14) for m in range(0, 60, 15)]
+    open_slots = []
+    for date in ("2026-06-06", "2026-06-13", "2026-06-20", "2026-06-27",
+                 "2026-07-04", "2026-07-11", "2026-07-18", "2026-07-25"):
+        for t in times:
+            open_slots.append({
+                "course": "eastlake", "date": date, "time": t,
+                "fee_group_id": "9270388", "fee_group_label": "WEEKEND",
+                "free": 4, "total": 4,
+            })
+    embeds = watcher.build_dashboard_embeds(open_slots, by_key)
+    assert len(embeds) == 2
+    assert all(len(e["description"]) <= 4096 for e in embeds)
+    assert "part 1/2" in embeds[0]["title"]
+    assert "part 2/2" in embeds[1]["title"]
+    assert "Sat 6 Jun" in embeds[0]["description"]   # earliest first
+    assert "Sat 25 Jul" in embeds[1]["description"]   # latest lands in the last part
+
+
+def test_dashboard_shrinks_deletes_surplus_messages(repo_tree):
+    """When the open list gets shorter, surplus dashboard messages are
+    deleted and dropped from state."""
+    prior = {
+        "last_run": "2026-05-29T00:00:00Z",
+        "slots": {
+            "eastlake|2026-05-30|02:30 pm|3784606": {
+                "free": 4, "fee_group_label": "SUNDOWNER (after 2:00pm)",
+            }
+        },
+        "posted_messages": {},
+        "dashboard_message_ids": ["111", "222"],
+    }
+    (repo_tree / "state.json").write_text(json.dumps(prior))
+    with patch("watcher.fetch_calendar", side_effect=_fake_calendar), \
+         patch("watcher.fetch_timesheet", side_effect=_fake_timesheet), \
+         patch("watcher.post_alert"), \
+         patch("watcher.edit_message", return_value=True), \
+         patch("watcher.post_dashboard"), \
+         patch("watcher.delete_dashboard_message", return_value=True) as mock_del:
+        exit_code = watcher.main(["--webhook", "https://discord/fake"])
+    assert exit_code == 0
+    mock_del.assert_called_once()
+    assert mock_del.call_args.args[1] == "222"  # only the surplus message
+    state = json.loads((repo_tree / "state.json").read_text())
+    assert state["dashboard_message_ids"] == ["111"]
