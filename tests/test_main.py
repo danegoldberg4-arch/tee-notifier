@@ -459,12 +459,13 @@ def test_dashboard_posted_on_seed_run_without_alerts(repo_tree):
     assert exit_code == 0
     mock_post.assert_not_called()
     mock_dash.assert_called_once()
-    content = mock_dash.call_args.args[1]
-    assert "@here" not in content
-    assert "Open now" in content
-    assert "Eastlake" in content
-    assert "Sat 30 May" in content  # date header, earliest upcoming first
-    assert "eastlakegolfclub.com.au" in content  # booking link per club line
+    embed = mock_dash.call_args.args[1]
+    assert "Open now" in embed["title"]
+    desc = embed["description"]
+    assert "@here" not in desc
+    assert "Eastlake" in desc
+    assert "Sat 30 May" in desc  # date header, earliest upcoming first
+    assert "eastlakegolfclub.com.au" in desc  # booking link per club line
     state = json.loads((repo_tree / "state.json").read_text())
     assert state["dashboard_message_id"] == "555"
 
@@ -492,7 +493,7 @@ def test_dashboard_edited_in_place_on_later_runs(repo_tree):
     mock_dash.assert_not_called()
     mock_edit.assert_called_once()  # only the dashboard edit; no tracked alerts
     assert mock_edit.call_args.args[1] == "555"
-    assert "Open now" in mock_edit.call_args.args[2]
+    assert "Open now" in mock_edit.call_args.kwargs["embed"]["title"]
     state = json.loads((repo_tree / "state.json").read_text())
     assert state["dashboard_message_id"] == "555"
 

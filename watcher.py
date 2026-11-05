@@ -275,19 +275,20 @@ def post_alert(webhook_url: str, match: dict, max_retries: int = 5) -> str | Non
     return None
 
 
-def build_dashboard_content(open_slots: list[dict], courses_by_key: dict) -> str:
-    """Rolling 'open now' summary for the channel dashboard message.
+def build_dashboard_embed(open_slots: list[dict], courses_by_key: dict) -> dict:
+    """Rolling 'open now' embed for the channel dashboard message.
 
     Groups every slot currently satisfying a watch entry (current state, not
     transitions) under date headers — earliest upcoming first — with one
-    linked line per club + rate, times chronological. The dashboard message
-    is edited in place every run, and edits never ping, so refreshing it is
-    silent.
+    linked line per club + rate, times chronological. Sent as an embed:
+    descriptions get 4096 chars (plain message content caps at 2000, and the
+    long booking URLs eat that fast). The message is edited in place every
+    run, and edits never ping, so refreshing it is silent.
     """
     stamp = datetime.now(SYDNEY_TZ).strftime("%a %d %b %I:%M %p")
-    header = f"⛳ **Open now** — updated {stamp} (Sydney)"
+    title = f"⛳ Open now — updated {stamp} (Sydney)"
     if not open_slots:
-        return header + "\nNothing matching the watch is open right now."
+        return {"title": title, "description": "Nothing matching the watch is open right now.", "color": 0x57F287}
     by_day: dict[str, dict[tuple[str, str], list[dict]]] = {}
     seen: set[str] = set()
     for m in open_slots:
@@ -314,20 +315,20 @@ def build_dashboard_content(open_slots: list[dict], courses_by_key: dict) -> str
             lines.append(f"[{course['name']} · {label}]({url}): {times}")
     body = "\n".join(lines)
     hidden = 0
-    while len(body) > 1800 and "\n" in body:  # Discord hard limit: 2000 chars
+    while len(body) > 3900 and "\n" in body:  # embed description limit: 4096
         body = body.rsplit("\n", 1)[0]
         hidden += 1
     if hidden:
         body += f"\n(+{hidden} more slots omitted)"
-    return f"{header}\n{body}"
+    return {"title": title, "description": body, "color": 0x57F287}
 
 
-def post_dashboard(webhook_url: str, content: str) -> str | None:
-    """Post the dashboard message (no mention); returns its message id."""
+def post_dashboard(webhook_url: str, embed: dict) -> str | None:
+    """Post the dashboard embed (no mention); returns its message id."""
     url = webhook_url + ("&" if "?" in webhook_url else "?") + "wait=true"
     response = requests.post(
         url,
-        json={"content": content, "allowed_mentions": {"parse": []}},
+        json={"embeds": [embed], "allowed_mentions": {"parse": []}},
         headers={"User-Agent": USER_AGENT},
         timeout=HTTP_TIMEOUT_SECONDS,
     )
@@ -374,17 +375,24 @@ def build_count_update_content(match: dict, prev_free: int) -> str:
     )
 
 
-def edit_message(webhook_url: str, message_id: str, content: str) -> bool:
-    """PATCH a previously-posted Discord message to new content (no mention).
+def edit_message(webhook_url: str, message_id: str, content: str | None = None, embed: dict | None = None) -> bool:
+    """PATCH a previously-posted Discord message (no mention).
 
-    Returns False if the message no longer exists (404 — deleted by hand) so the
-    caller can stop tracking it; True on success. Any other HTTP error raises so
-    the caller can retry next run.
+    Pass ``content`` (alerts) or ``embed`` (the dashboard) — an embed edit
+    also clears any plain text left on the message, so a dashboard message
+    never shows both old and new formats at once. Returns False if the
+    message no longer exists (404 — deleted by hand) so the caller can stop
+    tracking it; True on success. Any other HTTP error raises so the caller
+    can retry next run.
     """
     base = webhook_url.split("?", 1)[0].rstrip("/")
+    if embed is not None:
+        payload = {"content": "", "embeds": [embed], "allowed_mentions": {"parse": []}}
+    else:
+        payload = {"content": content, "allowed_mentions": {"parse": []}}
     response = requests.patch(
         f"{base}/messages/{message_id}",
-        json={"content": content, "allowed_mentions": {"parse": []}},
+        json=payload,
         headers={"User-Agent": USER_AGENT},
         timeout=HTTP_TIMEOUT_SECONDS,
     )
@@ -755,16 +763,16 @@ def main(argv: list[str] | None = None) -> int:
     # channel otherwise has no view of current state. Edits never ping.
     if webhook_url:
         open_slots = find_new_matches({}, current_slots, active_watchlist)
-        content = build_dashboard_content(open_slots, courses_by_key)
+        embed = build_dashboard_embed(open_slots, courses_by_key)
         if dashboard_message_id:
             try:
-                if not edit_message(webhook_url, dashboard_message_id, content):
+                if not edit_message(webhook_url, dashboard_message_id, embed=embed):
                     dashboard_message_id = None  # deleted by hand; re-post below
             except Exception as exc:
                 print(f"WARN: failed to edit dashboard message: {exc}", file=sys.stderr)
         if not dashboard_message_id:
             try:
-                new_id = post_dashboard(webhook_url, content)
+                new_id = post_dashboard(webhook_url, embed)
                 if new_id:
                     dashboard_message_id = str(new_id)
             except Exception as exc:
