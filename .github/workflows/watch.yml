@@ -34,6 +34,7 @@ jobs:
       - name: Run watcher
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          DISCORD_DASHBOARD_WEBHOOK_URL: ${{ secrets.DISCORD_DASHBOARD_WEBHOOK_URL }}
           STATE_DIR: /tmp/state
         run: mkdir -p /tmp/state && python3 watcher.py
 

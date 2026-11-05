@@ -550,6 +550,11 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     webhook_url = args.webhook or os.environ.get("DISCORD_WEBHOOK_URL", "")
+    # Optional dedicated webhook for the dashboard: an edited-in-place message
+    # stays where it was posted and gets buried as alerts arrive, so the
+    # dashboard is best kept in its own channel. Falls back to the alert
+    # webhook when unset.
+    dashboard_webhook_url = os.environ.get("DISCORD_DASHBOARD_WEBHOOK_URL", "") or webhook_url
 
     courses = _load_json(COURSES_PATH) or []
     courses_by_key = {c["key"]: c for c in courses}
@@ -797,13 +802,13 @@ def main(argv: list[str] | None = None) -> int:
             mid = dashboard_message_ids[i] if i < len(dashboard_message_ids) else None
             if mid:
                 try:
-                    if not edit_message(webhook_url, mid, embed=embed):
+                    if not edit_message(dashboard_webhook_url, mid, embed=embed):
                         mid = None  # deleted by hand; re-post below
                 except Exception as exc:
                     print(f"WARN: failed to edit dashboard message {i + 1}: {exc}", file=sys.stderr)
             if not mid:
                 try:
-                    new_id = post_dashboard(webhook_url, embed)
+                    new_id = post_dashboard(dashboard_webhook_url, embed)
                     mid = str(new_id) if new_id else None
                 except Exception as exc:
                     print(f"WARN: failed to post dashboard message {i + 1}: {exc}", file=sys.stderr)
@@ -816,8 +821,8 @@ def main(argv: list[str] | None = None) -> int:
         for mid in dashboard_message_ids[len(embeds):]:
             if mid:
                 try:
-                    if not delete_dashboard_message(webhook_url, mid):
-                        edit_message(webhook_url, mid, content="_(superseded dashboard message)_")
+                    if not delete_dashboard_message(dashboard_webhook_url, mid):
+                        edit_message(dashboard_webhook_url, mid, content="_(superseded dashboard message)_")
                 except Exception as exc:
                     print(f"WARN: failed to clean up surplus dashboard message: {exc}", file=sys.stderr)
         del dashboard_message_ids[len(embeds):]

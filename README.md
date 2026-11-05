@@ -11,7 +11,7 @@ The watcher runs on GitHub Actions, fired by an external cron pinger hitting `wo
 3. Diffs against `state.json` (the previous run's snapshot, persisted via GitHub Actions cache).
 4. Posts a Discord webhook message for any slot that newly satisfies a watch entry.
 5. Edits previously-alerted messages to ~~strikethrough~~ when their slot is booked / passes / vanishes.
-6. Maintains a rolling "⛳ Open now" dashboard message — edited every run to list every slot currently matching the watch (current state, not just transitions). Pin it in the channel; it never pings.
+6. Maintains a rolling "⛳ Open now" dashboard message — edited every run to list every slot currently matching the watch (current state, not just transitions). Pin it in the channel; it never pings. Set an optional `DISCORD_DASHBOARD_WEBHOOK_URL` secret to keep it in its own channel so it never gets buried by alerts.
 
 ## GitHub Actions setup (one-time)
 
@@ -37,7 +37,8 @@ The watcher runs on GitHub Actions, fired by an external cron pinger hitting `wo
 
 3. **First run will seed `state.json`.** No Discord pings on the first run (seed-only behaviour). Subsequent runs alert on newly-available slots.
 
-4. **Keepalive is automatic.** A weekly workflow pushes an empty commit, resetting GitHub's 60-day inactivity clock that would otherwise auto-disable the watcher.
+4. **Optional: give the dashboard its own channel.** The dashboard is edited in place, so in the alerts channel it gets buried as messages arrive. Create a channel (e.g. `#tee-dashboard`), add a webhook there (Edit Channel -> Integrations -> Webhooks -> New Webhook -> Copy URL), and add a repository secret `DISCORD_DASHBOARD_WEBHOOK_URL` with that URL. The watcher then posts and maintains the dashboard there instead; pin it for one-click access. After switching, delete the old dashboard message(s) from the alerts channel by hand once.
+5. **Keepalive is automatic.** A weekly workflow pushes an empty commit, resetting GitHub's 60-day inactivity clock that would otherwise auto-disable the watcher.
 
 State persistence uses GitHub Actions cache -- `state.json` is saved after each run and restored before the next. No persistent server or volume needed.
 

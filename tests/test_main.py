@@ -575,3 +575,17 @@ def test_dashboard_shrinks_deletes_surplus_messages(repo_tree):
     assert mock_del.call_args.args[1] == "222"  # only the surplus message
     state = json.loads((repo_tree / "state.json").read_text())
     assert state["dashboard_message_ids"] == ["111"]
+
+
+def test_dashboard_posts_to_dedicated_webhook_when_set(repo_tree, monkeypatch):
+    """DISCORD_DASHBOARD_WEBHOOK_URL moves the dashboard to its own channel;
+    alerts keep using the main webhook."""
+    monkeypatch.setenv("DISCORD_DASHBOARD_WEBHOOK_URL", "https://discord/dash")
+    (repo_tree / "state.json").write_text("{}")
+    with patch("watcher.fetch_calendar", side_effect=_fake_calendar), \
+         patch("watcher.fetch_timesheet", side_effect=_fake_timesheet), \
+         patch("watcher.post_alert"), \
+         patch("watcher.post_dashboard", return_value="555") as mock_dash:
+        exit_code = watcher.main(["--webhook", "https://discord/fake"])
+    assert exit_code == 0
+    assert mock_dash.call_args.args[0] == "https://discord/dash"
