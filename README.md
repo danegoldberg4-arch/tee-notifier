@@ -6,7 +6,7 @@ Watches public tee-sheets of participating golf courses and posts a Discord `@he
 
 The watcher runs on GitHub Actions, fired by an external cron pinger hitting `workflow_dispatch` every 20 minutes (see setup below). Each run:
 
-1. Builds the watch. By default it generates rolling upcoming weekend slots (every Sat/Sun for the next `WATCH_WEEKS` weeks, all courses, 06:00 to 14:00, 2+ spots) from `courses.json`, so the watch never runs dry and needs no hand-editing. If a `watchlist.json` file is present it overrides generation and becomes the source of truth (manual mode).
+1. Builds the watch. By default it generates rolling upcoming weekend slots (every Sat/Sun for the next `WATCH_WEEKS` weeks — default 6, all courses, 06:00 to 14:00, 2+ spots) from `courses.json`, so the watch never runs dry and needs no hand-editing. If a `watchlist.json` file is present it overrides generation and becomes the source of truth (manual mode).
 2. Fetches each course's public calendar + timesheet pages.
 3. Diffs against `state.json` (the previous run's snapshot, persisted via GitHub Actions cache).
 4. Posts a Discord webhook message for any slot that newly satisfies a watch entry.

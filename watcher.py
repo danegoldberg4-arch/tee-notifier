@@ -464,7 +464,7 @@ def _reap_watchlist(watchlist: list[dict], today_iso: str) -> list[dict]:
 
 # Rolling watchlist generation. When no watchlist.json is present, the watch is
 # derived from courses.json so it never runs dry and needs no hand-editing.
-DEFAULT_WATCH_WEEKS = 8
+DEFAULT_WATCH_WEEKS = 6
 _WEEKEND_LABELS = {5: "Sat morning", 6: "Sun morning"}  # Mon=0 .. Sun=6
 
 
